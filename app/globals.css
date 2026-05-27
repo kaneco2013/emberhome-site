@@ -1,9 +1,60 @@
 @import "tailwindcss";
 
+/* Базовые стили для готической атмосферы */
 html,
 body {
     margin: 0;
     padding: 0;
-    background-color: #000000;
-    color: #ffffff;
+    background-color: #050505;
+    color: #d4d4d8;
+    font-family: system-ui, -apple-system, sans-serif;
+    scroll-behavior: smooth;
 }
+
+.animate-subtle-zoom {
+    animation: subtle-zoom 40s infinite alternate ease-in-out;
+}
+
+.animate-fade-in-up {
+    animation: fade-in-up 1.2s cubic-bezier(0.215, 0.610, 0.355, 1) forwards;
+}
+
+@keyframes subtle-zoom {
+    0% {
+        transform: scale(1.01) translate(0, 0);
+    }
+
+    100% {
+        transform: scale(1.06) translate(-0.5%, -0.5%);
+    }
+}
+
+@keyframes fade-in-up {
+    0% {
+        opacity: 0;
+        transform: translateY(30px);
+        filter: blur(4px);
+    }
+
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+        filter: blur(0);
+    }
+}
+
+/* Мягкая пульсация света факелов и окон на арте */
+.animate-lantern-glow {
+    animation: lantern-glow 4s infinite alternate ease-in-out;
+}
+
+@keyframes lantern-glow {
+    0% {
+        opacity: 0.2;
+    }
+
+    100% {
+        opacity: 0.55;
+    }
+}
+
