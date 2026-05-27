@@ -59,17 +59,17 @@ export default function Home() {
           100% { opacity: 0.75; transform: scale(1.07); filter: blur(65px); }
         }
         @keyframes window-glow {
-          0% { opacity: 0.1; transform: scale(0.96); filter: blur(40px); }
+          0% { opacity: 0.1; transform: scale(0.5); filter: blur(40px); }
           100% { opacity: 0.5; transform: scale(1.04); filter: blur(55px); }
         }
         .animate-bg-fog {
           animation: subtle-zoom 35s infinite alternate ease-in-out !important;
         }
         .glow-lantern-fast {
-          animation: lantern-glow-fast 1.8s infinite alternate ease-in-out !important;
+          animation: lantern-glow-fast 3s infinite alternate ease-in-out !important;
         }
         .glow-windows-white {
-          animation: window-glow 3s infinite alternate ease-in-out !important;
+          animation: window-glow 5s infinite alternate ease-in-out !important;
           animation-delay: 0.7s;
         }
         .glass-panel {
@@ -103,9 +103,9 @@ export default function Home() {
           className="absolute right-[4%] bottom-[42%] w-72 h-72 rounded-full z-10 pointer-events-none mix-blend-screen glow-lantern-fast" 
           style={{ backgroundColor: 'rgba(245, 158, 11, 0.28)' }}
         />
-        {/* Свечение окон */}
+        {/* Свечение луны */}
         <div 
-          className="absolute left-[40%] top-[15%] w-80 h-48 rounded-full z-10 pointer-events-none mix-blend-screen glow-windows-white" 
+          className="absolute left-[15%] top-[5%] w-80 h-48 rounded-full z-10 pointer-events-none mix-blend-screen glow-windows-white" 
           style={{ backgroundColor: 'rgba(255, 255, 255, 0.5)' }}
         />
       </div>
