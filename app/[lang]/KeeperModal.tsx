@@ -15,7 +15,7 @@ interface KeeperModalProps {
 // База данных 12 Призраков (Мрачные силуэты)
 const keepers = Array.from({ length: 12 }, (_, i) => {
   const ids = i + 1;
-  const ghostNames: Record<string, string> = {
+  const ghostNames: Record<number, any> = {
     1: { ru: "Фонарщик Руин", en: "Ruin Lantern-bearer", fi: "Raunioiden Lyhdynkantaja", de: "Ruinen-Laternenträger", fr: "Porteur de Lanterne des Ruines", zh: "废墟提灯者", ja: "遺跡のランタン持ち", es: "Portador de la Linterna de las Ruinas", it: "Portatore di Lanterna delle Rovine", sjn: "Ceredir thail" },
     2: { ru: "Плетельщик Кроны", en: "Canopy Weaver", fi: "Latvuston Kutoja", de: "Blätterdach-Webers", fr: "Tisseur de Canopée", zh: "林冠编织者", ja: "樹冠의 織り手", es: "Tejedor de Dosel", it: "Tessitore di Chiome", sjn: "Gwaedh-nath" },
     3: { ru: "Пепельный Странник", en: "Ash Wanderer", fi: "Tuhkavaeltaja", de: "Aschenwanderer", fr: "Rôdeur de Cendres", zh: "灰烬行者", ja: "灰の放浪者", es: "Vagabundo de Ceniza", it: "Vagabondo di Cenere", sjn: "Randir lith" },
@@ -35,7 +35,7 @@ const keepers = Array.from({ length: 12 }, (_, i) => {
 // База данных 12 Компаньонов (Милые призраки-малыши)
 const pets = Array.from({ length: 12 }, (_, i) => {
   const ids = i + 1;
-  const companionNames: Record<string, string> = {
+const companionNames: Record<number, any> = {
     1: { ru: "Хранитель Плюша", en: "Plush Warden", fi: "Plushin Vartija", de: "Plüsch-Wächter", fr: "Gardien de Peluche", zh: "毛绒守卫", ja: "ぬいぐるみの守護者", es: "Guardián de Peluche", it: "Custode del Peluche", sjn: "Hir thand" },
     2: { ru: "Весеннее Эхо", en: "Spring Echo", fi: "Kevään Kaiku", de: "Frühlings-Echo", fr: "Écho du Printemps", zh: "春之回响", ja: "春の残響", es: "Eco de Primavera", it: "Eco di Primavera", sjn: "Gwaith ethuil" },
     3: { ru: "Туманный Маг", en: "Mist Magus", fi: "Sumun Maagi", de: "Nebel-Magier", fr: "Mage de Brume", zh: "迷雾法师", ja: "霧の魔術師", es: "Mago de la Niebla", it: "Mago della Nebbia", sjn: "Curunir hîth" },
