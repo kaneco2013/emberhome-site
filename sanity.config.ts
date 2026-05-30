@@ -43,12 +43,11 @@ export default defineConfig({
           languageField: 'language',
           documentTypes: ['news', 'siteSettings', 'gallery']
         }
-      },
-      aiAssist()
-      //aiAssist: {imageDescriptionAction: true}
-    })
+      }
+    }),
+    aiAssist(),
   ],
-
+ 
   schema: {
     types: [
       // 1. СХЕМА ДЛЯ ДИНАМИЧЕСКИХ НОВОСТЕЙ
