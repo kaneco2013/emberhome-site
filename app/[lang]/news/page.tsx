@@ -5,6 +5,7 @@ import { client } from "../../../sanity.client";
 import Link from "next/link";
 import Image from "next/image";
 import { useParams } from "next/navigation";
+export const dynamic = "force-dynamic";
 
 interface NewsItem {
   title: string;
@@ -31,7 +32,7 @@ export default function AllNewsPage() {
       date,
       "slug": slug.current
     }`;
-    client.fetch(query, { lang })
+    client.fetch(query, { lang }, { cache: 'no-store', next: { revalidate: 0 } })
       .then((data) => {
         setAllNews(data);
         setLoading(false);

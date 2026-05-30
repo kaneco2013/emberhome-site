@@ -5,6 +5,7 @@ import { client } from "../../../sanity.client";
 import Link from "next/link";
 import Image from "next/image";
 import { useParams } from "next/navigation";
+export const dynamic = "force-dynamic";
 
 interface GalleryItem {
   _id: string;
@@ -33,7 +34,7 @@ export default function GalleryPage() {
       title,
       "imageUrl": image.asset->url
     }`;
-    client.fetch(query, { lang })
+    client.fetch(query, { lang }, { cache: 'no-store', next: { revalidate: 0 } })
       .then((data) => {
         setImages(data);
         setLoading(false); // Загрузка завершена
