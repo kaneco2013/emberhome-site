@@ -27,7 +27,8 @@ export default function GalleryPage() {
   };
 
   useEffect(() => {
-    const query = `*[_type == "gallery" && language == $lang] | order(_createdAt desc) {
+    const query = `*[_type == "gallery" && (__i18n_lang == $lang || language == $lang)] | order(_createdAt desc) {
+
       _id,
       title,
       "imageUrl": image.asset->url

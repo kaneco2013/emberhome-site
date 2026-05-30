@@ -21,7 +21,7 @@ export default function AllNewsPage() {
 
   const t = {
     title: lang === 'ru' ? 'ВСЕ НОВОСТИ' : 'ALL NEWS',
-    noNews: lang === 'ru' ? 'Древние свитки молчат (Новостей нет)' : 'No news found...',
+    noNews: lang === 'ru' ? 'Новостей нет' : 'No news found...',
   };
 
   useEffect(() => {
