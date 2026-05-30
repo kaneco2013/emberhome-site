@@ -44,9 +44,8 @@ export default defineConfig({
           documentTypes: ['news', 'siteSettings', 'gallery']
         }
       },
-      aiAssist: {
-        imageDescriptionAction: true
-      }
+      aiAssist()
+      //aiAssist: {imageDescriptionAction: true}
     })
   ],
 
