@@ -2,7 +2,7 @@ import { defineConfig } from 'sanity'
 import { deskTool } from 'sanity/desk'
 import { visionTool } from '@sanity/vision'
 import { documentInternationalization } from '@sanity/document-internationalization'
-import { assist } from '@sanity/assist'
+import { aiAssist } from '@sanity/assist';
 
 const SUPPORTED_LANGUAGES = [
   { id: 'en', title: 'English' },
