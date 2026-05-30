@@ -25,7 +25,8 @@ export default function AllNewsPage() {
   };
 
   useEffect(() => {
-    const query = `*[_type == "news" && language == $lang] | order(date desc) {
+    const query = `*[_type == "news" && (__i18n_lang == $lang || language == $lang)] | order(date desc) {
+
       title,
       date,
       "slug": slug.current
