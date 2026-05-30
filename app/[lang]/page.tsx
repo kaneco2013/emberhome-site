@@ -186,7 +186,7 @@ export default async function Home({ params }: { params: Promise<{ lang: string 
     return (
       <div 
         key={i} 
-        className="md:col-span-2 lg:col-span-2.6 h-56 w-full [perspective:1000px] group cursor-pointer"
+        className="md:col-span-2 lg:col-span-2 h-56 w-full [perspective:1000px] group cursor-pointer"
       >
         <div className="relative w-full h-full transition-transform duration-700 [transform-style:preserve-3d] group-hover:[transform:rotateY(180deg)]">
           
