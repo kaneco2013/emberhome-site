@@ -2,7 +2,6 @@ import { defineConfig } from 'sanity'
 import { deskTool } from 'sanity/desk'
 import { visionTool } from '@sanity/vision'
 import { documentInternationalization } from '@sanity/document-internationalization'
-import { aiAssist } from '@sanity/assist';
 
 const SUPPORTED_LANGUAGES = [
   { id: 'en', title: 'English' },
@@ -44,8 +43,7 @@ export default defineConfig({
           documentTypes: ['news', 'siteSettings', 'gallery']
         }
       }
-    }),
-    aiAssist(),
+    })
   ],
  
   schema: {
