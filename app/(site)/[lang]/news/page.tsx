@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from "react";
-import { client } from "../../../sanity.client";
+import { client } from "@/sanity.client";
 import Link from "next/link";
 import Image from "next/image";
 import { useParams } from "next/navigation";
@@ -20,10 +20,23 @@ export default function AllNewsPage() {
   const [allNews, setAllNews] = useState<NewsItem[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const t = {
-    title: lang === 'ru' ? 'ВСЕ НОВОСТИ' : 'ALL NEWS',
-    noNews: lang === 'ru' ? 'Новостей нет' : 'No news found...',
-  };
+// Полный словарь для всех страниц и меню
+const menuTranslations: Record<string, { main: string; gallery: string; news: string; title: string; empty: string; readMore: string }> = {
+ru: { main: "ГЛАВНАЯ", gallery: "ГАЛЕРЕЯ", news: "НОВОСТИ", readMore: "ЧИТАТЬ →" },
+en: { main: "MAIN", gallery: "GALLERY", news: "NEWS", readMore: "READ →" },
+fi: { main: "KOTI", gallery: "GALLERIA", news: "UUTISET", readMore: "LUE →" },
+de: { main: "HAUPTSEITE", gallery: "GALERIE", news: "NEWS", readMore: "LESEN →" },
+fr: { main: "ACCUEIL", gallery: "GALERIE", news: "NOUVELLES", readMore: "LIRE →" },
+zh: { main: "首页", gallery: "画廊", news: "新闻", readMore: "阅读 →" },
+ja: { main: "メイン", gallery: "ギャラリー", news: "ニュース", readMore: "読む →" },
+es: { main: "INICIO", gallery: "GALERÍA", news: "NOTICIAS", readMore: "LEER →" },
+it: { main: "HOME", gallery: "GALLERIA", news: "NOTIZIE", readMore: "LEGGI →" },
+sjn: { main: "I-FÂS", gallery: "COVAIN", news: "SINIATH", readMore: "TEG →" }
+
+};
+
+// Получаем переводы для текущего языка (или откат на английский, если язык не найден)
+const t = menuTranslations[lang] || menuTranslations["en"];
 
   useEffect(() => {
     const query = `*[_type == "news" && (__i18n_lang == $lang || language == $lang)] | order(date desc) {
@@ -60,9 +73,11 @@ export default function AllNewsPage() {
       <header className="w-full max-w-7xl mx-auto px-6 py-6 flex justify-between items-center fixed top-0 left-1/2 -translate-x-1/2 z-50 bg-gradient-to-b from-[#050505]/90 via-[#050505]/40 to-transparent backdrop-blur-sm border-b border-zinc-900/30">
         <div className="text-xl font-light tracking-[0.4em] text-zinc-100 cursor-default font-serif">EMBERHOME</div>
         <nav className="hidden md:flex items-center gap-10 text-xs font-semibold tracking-[0.2em] text-zinc-400 uppercase">
-          <Link href={`/${lang}`} className="hover:text-red-500 transition-colors">{lang === 'ru' ? 'ГЛАВНАЯ' : 'MAIN'}</Link>
-          <Link href={`/${lang}/gallery`} className="hover:text-red-500 transition-colors">{lang === 'ru' ? 'ГАЛЕРЕЯ' : 'GALLERY'}</Link>
-          <Link href={`/${lang}/news`} className="text-zinc-100 hover:text-red-500 transition-colors">{lang === 'ru' ? 'НОВОСТИ' : 'NEWS'}</Link>
+<Link href={`/${lang}`} className="hover:text-red-500 transition-colors">{t.main}</Link>
+<Link href={`/${lang}/gallery`} className="hover:text-red-500 transition-colors">{t.gallery}</Link>
+<Link href={`/${lang}/news`} className="text-zinc-100 hover:text-red-500 transition-colors">{t.news}</Link>
+
+
         </nav>
         <div className="w-10" />
       </header>
@@ -75,14 +90,15 @@ export default function AllNewsPage() {
       </div>
 
       {/* КОНТЕНТНАЯ ЧАСТЬ С ВЫРАВНИВАНИЕМ ПО ГАЛЕРЕЕ */}
-      <div className="w-full max-w-6xl mx-auto px-6 pb-16 relative z-20 flex-grow">
+      <div className="w-full max-w-6xl mx-auto px-6 pt-36 pb-16 relative z-20 flex-grow">
+
         
-        {/* Точный заголовок как в галерее */}
-        <div className="pt-35 mb-12 border-b border-zinc-900/60 pb-6">
-          <h1 className="text-3xl md:text-5xl font-light tracking-[0.2em] text-zinc-100 uppercase font-serif">
-            {t.title}
-          </h1>
-        </div>
+        {/* Точный заголовок */}
+<div className="mb-12 border-b border-zinc-900/60 pb-6">
+  <h1 className="text-3xl md:text-5xl font-light tracking-[0.2em] text-zinc-100 uppercase font-serif">
+    {t.news}
+  </h1>
+</div>
 
         {/* Ширина для самого списка */}
         <div className="max-w-3xl">
@@ -105,14 +121,17 @@ export default function AllNewsPage() {
                         </span>
                         <h2 className="text-base text-zinc-400 group-hover:text-amber-500 transition font-light font-serif">{newsItem.title}</h2>
                       </div>
-                      <div className="text-xs text-zinc-500 group-hover:text-red-500 uppercase tracking-wider transition-colors shrink-0 font-mono">{lang === 'ru' ? 'Читать →' : 'Read →'}</div>
+                      <div className="text-xs text-zinc-500 group-hover:text-red-500 uppercase tracking-wider transition-colors shrink-0 font-mono">
+  {t.readMore}
+</div>
                     </div>
                   </Link>
                 );
               })}
             </div>
           ) : (
-            <div className="text-center py-16 text-xs text-zinc-600 italic font-serif">{t.noNews}</div>
+            <div className="text-center py-16 text-xs text-zinc-600 italic font-serif">{t.empty}</div>
+
           )}
         </div>
       </div>

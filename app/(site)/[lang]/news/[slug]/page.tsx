@@ -9,6 +9,8 @@ async function getNewsItem(slug: string, lang: string) {
 const query = '*[_type == "news" && (slug.current == $slug || url.current == $slug) && language == $lang][0] { title, date, text, body, description, content, bodyBlock, "imageUrl": mainImage.asset->url, "altImageUrl": image.asset->url }';
 
   const data = await client.fetch(query, { slug, lang });
+
+
   return data;
 }
 
@@ -83,6 +85,24 @@ export default async function NewsPostPage(props: PageProps) {
   // Автоматически берем то текстовое поле, которое заполнено в Sanity
   const articleText = newsItem.text || newsItem.body || newsItem.description || newsItem.content || "";
 
+  // Полный мультиязычный словарь для кнопки возврата к списку новостей
+const backTranslations: Record<string, string> = {
+  ru: "← Назад к новостям",
+  en: "← Back to news",
+  fi: "← Takaisin uutisiin",
+  de: "← Zurück zu den Nachrichten",
+  fr: "← Retour aux nouvelles",
+  zh: "← 返回新闻",
+  ja: "← ニュースに戻る",
+  es: "← Volver a las noticias",
+  it: "← Torna alle notizie",
+  sjn: "← Dan i-siniath"
+};
+
+// Получаем текст для текущего языка страницы
+const currentBackText = backTranslations[lang] || backTranslations["en"];
+
+
   return (
     <main className="min-h-screen bg-[#050505] text-zinc-300 flex flex-col items-center justify-start antialiased relative overflow-x-hidden selection:bg-red-950 selection:text-red-300 pt-24 px-4 md:px-6">
       
@@ -91,24 +111,29 @@ export default async function NewsPostPage(props: PageProps) {
 
       <div className="w-full max-w-3xl space-y-8 relative z-20">
         
-        {/* Кнопка возврата */}
-        <div className="border-b border-zinc-900/60 pb-4">
-          <Link 
-            href={'/' + lang} 
-            className="text-xs font-semibold tracking-[0.2em] text-zinc-400 hover:text-red-500 transition-colors uppercase"
-          >
-            {lang === "ru" ? "← Назад на главную" : "← Back to home"}
-          </Link>
-        </div>
+{/* Кнопка возврата */}
+<div className="border-b border-zinc-900/60 pb-4">
+ <Link
+   href={'/' + lang + '/news'} // ← ТЕПЕРЬ ССЫЛКА ВЕДЕТ В РАЗДЕЛ НОВОСТЕЙ
+   className="text-xs font-semibold tracking-[0.2em] text-zinc-400 hover:text-red-500 transition-colors uppercase"
+ >
+   {currentBackText} {/* ← СЮДА ПОДСТАВЛЯЕТСЯ ТЕКСТ НА НУЖНОМ ЯЗЫКЕ */}
+ </Link>
+</div>
+
+
 
         {/* Обложка новости с эффектом card-glow-effect */}
         {(newsItem?.imageUrl || newsItem?.altImageUrl) && (
           <div className="relative w-full h-64 md:h-96 overflow-hidden border border-zinc-900/60 rounded-sm transition-all duration-500 hover:border-red-900/30">
-            <img 
-              src={newsItem.imageUrl || newsItem.altImageUrl} 
-              alt={newsItem.title || "News image"} 
-              className="w-full h-full object-contain brightness-90 hover:scale-101 transition-transform duration-700"
-            />
+<Image
+ src={newsItem.imageUrl || newsItem.altImageUrl}
+ alt={newsItem.title || "News image"}
+ fill
+ sizes="(max-width: 768px) 100vw, 50vw"
+ className="w-full h-full object-contain brightness-90 hover:scale-101 transition-transform duration-700"
+/>
+
             <div className="absolute inset-0 bg-gradient-to-t from-[#050505] via-transparent to-transparent opacity-60" />
           </div>
         )}

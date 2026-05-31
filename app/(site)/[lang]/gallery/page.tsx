@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from "react";
-import { client } from "../../../sanity.client";
+import { client } from "@/sanity.client";
 import Link from "next/link";
 import Image from "next/image";
 import { useParams } from "next/navigation";
@@ -14,18 +14,29 @@ interface GalleryItem {
 }
 
 export default function GalleryPage() {
-  const params = useParams();
-  const lang = (params?.lang as string) || "ru";
+const params = useParams();
+const lang = typeof params?.lang === 'string' ? params.lang : "ru";
 
   const [images, setImages] = useState<GalleryItem[]>([]);
   const [loading, setLoading] = useState(true); // Состояние загрузки
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
 
-  const t = {
-    title: lang === 'ru' ? 'ГАЛЕРЕЯ' : 'GALLERY',
-    back: lang === 'ru' ? '← На главную' : '← Back Home',
-    empty: lang === 'ru' ? 'В галерее пока нет изображений.' : 'No images in the gallery yet.',
-  };
+// Полный словарь для всех страниц и меню
+const menuTranslations: Record<string, { main: string; gallery: string; news: string; title: string; empty: string }> = {
+  ru: { main: "ГЛАВНАЯ", gallery: "ГАЛЕРЕЯ", news: "НОВОСТИ", title: "ГАЛЕРЕЯ", empty: "В галерее пока нет изображений." },
+  en: { main: "MAIN", gallery: "GALLERY", news: "NEWS", title: "GALLERY", empty: "No images in the gallery yet." },
+  fi: { main: "KOTI", gallery: "GALLERIA", news: "UUTISET", title: "GALLERIA", empty: "Galleriassa ei ole vielä kuvia." },
+  de: { main: "HAUPTSEITE", gallery: "GALERIE", news: "NEWS", title: "GALERIE", empty: "Keine Bilder in der Galerie vorhanden." },
+  fr: { main: "ACCUEIL", gallery: "GALERIE", news: "NOUVELLES", title: "GALERIE", empty: "Aucune image dans la galerie pour le moment." },
+  zh: { main: "首页", gallery: "画廊", news: "新闻", title: "画廊", empty: "画廊中暂无图像。" },
+  ja: { main: "メイン", gallery: "ギャラリー", news: "ニュース", title: "ギャラリー", empty: "ギャラリーにまだ画像がありません。" },
+  es: { main: "INICIO", gallery: "GALERÍA", news: "NOTICIAS", title: "GALERÍA", empty: "No hay imágenes en la galería todavía." },
+  it: { main: "HOME", gallery: "GALLERIA", news: "NOTIZIE", title: "GALLERIA", empty: "Non ci sono ancora immagini nella galleria." },
+  sjn: { main: "I-FÂS", gallery: "COVAIN", news: "SINIATH", title: "COVAIN", empty: "Al-vî hî covain nef mî..." }
+};
+
+// Получаем переводы для текущего языка (или откат на английский, если язык не найден)
+const t = menuTranslations[lang] || menuTranslations["en"];
 
   useEffect(() => {
     const query = `*[_type == "gallery" && (__i18n_lang == $lang || language == $lang)] | order(_createdAt desc) {
@@ -87,9 +98,10 @@ export default function GalleryPage() {
       <header className="w-full max-w-7xl mx-auto px-6 py-6 flex justify-between items-center fixed top-0 left-1/2 -translate-x-1/2 z-50 bg-gradient-to-b from-[#050505]/90 via-[#050505]/40 to-transparent backdrop-blur-sm border-b border-zinc-900/30">
         <div className="text-xl font-light tracking-[0.4em] text-zinc-100 cursor-default font-serif">EMBERHOME</div>
         <nav className="hidden md:flex items-center gap-10 text-xs font-semibold tracking-[0.2em] text-zinc-400 uppercase">
-          <Link href={`/${lang}`} className="hover:text-red-500 transition-colors">{lang === 'ru' ? 'ГЛАВНАЯ' : 'MAIN'}</Link>
-          <Link href={`/${lang}/gallery`} className="text-zinc-100 hover:text-red-500 transition-colors">{lang === 'ru' ? 'ГАЛЕРЕЯ' : 'GALLERY'}</Link>
-          <Link href={`/${lang}/news`} className="hover:text-red-500 transition-colors">{lang === 'ru' ? 'НОВОСТИ' : 'NEWS'}</Link>
+<Link href={`/${lang}`} className="hover:text-red-500 transition-colors">{t.main}</Link>
+<Link href={`/${lang}/gallery`} className="text-zinc-100 hover:text-red-500 transition-colors">{t.gallery}</Link>
+<Link href={`/${lang}/news`} className="hover:text-red-500 transition-colors">{t.news}</Link>
+
         </nav>
         <div className="w-10" />
       </header>
