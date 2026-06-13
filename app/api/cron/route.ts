@@ -36,7 +36,7 @@ if (!isCronAgent && !isTokenValid) {
         // Безопасный запрос к API целей Boosty (краудфандинг Камчатки)
     try {
       const boostyResponse = await fetch(
-        `https://api.boosty.to/v1/blog/emberhome/targets`,
+        `https://api.boosty.to/v1/blog/emberhome`,
         {
           cache: 'no-store',
           headers: {
@@ -48,13 +48,13 @@ if (!isCronAgent && !isTokenValid) {
         }
       );
 
-      if (boostyResponse.ok) {
-        const boostyData = await boostyResponse.json();
-        console.log("РЕАЛЬНЫЙ ОТВЕТ ОТ БУСТИ (ЦЕЛИ):", JSON.stringify(boostyData));
-        
-        // Boosty возвращает цели в массиве, собираем донатеров из всех активных целей
-        const targets = boostyData.data || [];
-        targets.forEach((target: any) => {
+ if (boostyResponse.ok) {
+ const boostyData = await boostyResponse.json();
+ console.log("РЕАЛЬНЫЙ ОТВЕТ ОТ БУСТИ (БЛОГ):", JSON.stringify(boostyData));
+ 
+ // Извлекаем цели краудфандинга напрямую из данных профиля
+ const targets = boostyData.targets || [];
+ targets.forEach((target: any) => {
           if (target.donators && Array.isArray(target.donators)) {
             donations.push(...target.donators);
           }
