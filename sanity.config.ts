@@ -4,6 +4,9 @@ import { visionTool } from '@sanity/vision'
 import { documentInternationalization } from '@sanity/document-internationalization'
 import { assist } from '@sanity/assist';
 
+import supportPage from './sanity/schemaTypes/supportPage'
+
+
 const SUPPORTED_LANGUAGES = [
   { id: 'en', title: 'English' },
   { id: 'ru', title: 'Русский' },
@@ -33,7 +36,7 @@ export default defineConfig({
     // Структура документов для 10 языков (новости + настройки интерфейса)
     documentInternationalization({
       supportedLanguages: SUPPORTED_LANGUAGES,
-      schemaTypes: ['news', 'siteSettings', 'gallery'],
+      schemaTypes: ['news', 'siteSettings', 'gallery', 'supportPage'],
     }),
 
     // ИИ-ассистент с пакетным переводом
@@ -41,7 +44,7 @@ export default defineConfig({
       translate: {
         document: {
           languageField: 'language',
-          documentTypes: ['news', 'siteSettings', 'gallery']
+          documentTypes: ['news', 'siteSettings', 'gallery', 'supportPage'],
         }
       }
     }),
@@ -49,6 +52,8 @@ export default defineConfig({
  
   schema: {
     types: [
+
+        supportPage,
       // 1. СХЕМА ДЛЯ ДИНАМИЧЕСКИХ НОВОСТЕЙ
       {
         name: 'news',
@@ -203,6 +208,12 @@ export default defineConfig({
             type: 'string',
             options: { aiAssist: { translateAction: true } }
           },
+                  {
+  name: 'menuSupport',
+  title: 'Меню: Поддержка',
+  type: 'string',
+  options: { aiAssist: { translateAction: true } }
+},
           {
             name: 'newsBlockTitle',
             title: 'Заголовок блока новостей',

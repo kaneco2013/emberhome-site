@@ -22,17 +22,17 @@ const lang = typeof params?.lang === 'string' ? params.lang : "ru";
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
 
 // Полный словарь для всех страниц и меню
-const menuTranslations: Record<string, { main: string; gallery: string; news: string; title: string; empty: string }> = {
-  ru: { main: "ГЛАВНАЯ", gallery: "ГАЛЕРЕЯ", news: "НОВОСТИ", title: "ГАЛЕРЕЯ", empty: "В галерее пока нет изображений." },
-  en: { main: "MAIN", gallery: "GALLERY", news: "NEWS", title: "GALLERY", empty: "No images in the gallery yet." },
-  fi: { main: "KOTI", gallery: "GALLERIA", news: "UUTISET", title: "GALLERIA", empty: "Galleriassa ei ole vielä kuvia." },
-  de: { main: "HAUPTSEITE", gallery: "GALERIE", news: "NEWS", title: "GALERIE", empty: "Keine Bilder in der Galerie vorhanden." },
-  fr: { main: "ACCUEIL", gallery: "GALERIE", news: "NOUVELLES", title: "GALERIE", empty: "Aucune image dans la galerie pour le moment." },
-  zh: { main: "首页", gallery: "画廊", news: "新闻", title: "画廊", empty: "画廊中暂无图像。" },
-  ja: { main: "メイン", gallery: "ギャラリー", news: "ニュース", title: "ギャラリー", empty: "ギャラリーにまだ画像がありません。" },
-  es: { main: "INICIO", gallery: "GALERÍA", news: "NOTICIAS", title: "GALERÍA", empty: "No hay imágenes en la galería todavía." },
-  it: { main: "HOME", gallery: "GALLERIA", news: "NOTIZIE", title: "GALLERIA", empty: "Non ci sono ancora immagini nella galleria." },
-  sjn: { main: "I-FÂS", gallery: "COVAIN", news: "SINIATH", title: "COVAIN", empty: "Al-vî hî covain nef mî..." }
+const menuTranslations: Record<string, { main: string; gallery: string; news: string; support: string; title: string; empty: string }> = {
+  ru: { main: "ГЛАВНАЯ", gallery: "ГАЛЕРЕЯ", news: "НОВОСТИ", support: "Энергия ядра", title: "ГАЛЕРЕЯ", empty: "В галерее пока нет изображений." },
+  en: { main: "MAIN", gallery: "GALLERY", news: "NEWS", support: "Core energy",title: "GALLERY", empty: "No images in the gallery yet." },
+  fi: { main: "KOTI", gallery: "GALLERIA", news: "UUTISET", support: "Ydinenergia",title: "GALLERIA", empty: "Galleriassa ei ole vielä kuvia." },
+  de: { main: "STARTSEITE", gallery: "GALERIE", news: "NEWS", support: "Kernenergie",title: "GALERIE", empty: "Keine Bilder in der Galerie vorhanden." },
+  fr: { main: "ACCUEIL", gallery: "GALERIE", news: "NOUVELLES", support: "Énergie de base",title: "GALERIE", empty: "Aucune image dans la galerie pour le moment." },
+  zh: { main: "首页", gallery: "画廊", news: "新闻", support: "核心能量",title: "画廊", empty: "画廊中暂无图像。" },
+  ja: { main: "メイン", gallery: "ギャラリー", news: "ニュース", support: "コアエネルギー",title: "ギャラリー", empty: "ギャラリーにまだ画像がありません。" },
+  es: { main: "INICIO", gallery: "GALERÍA", news: "NOTICIAS", support: "Energía central",title: "GALERÍA", empty: "No hay imágenes en la galería todavía." },
+  it: { main: "CASA", gallery: "GALLERIA", news: "NOTIZIE", support: "Energia fondamentale",title: "GALLERIA", empty: "Non ci sono ancora immagini nella galleria." },
+  sjn: { main: "I-FÂS", gallery: "COVAIN", news: "SINIATH", support: "Estel voreb",title: "COVAIN", empty: "Al-vî hî covain nef mî..." }
 };
 
 // Получаем переводы для текущего языка (или откат на английский, если язык не найден)
@@ -101,8 +101,9 @@ const t = menuTranslations[lang] || menuTranslations["en"];
 <Link href={`/${lang}`} className="hover:text-red-500 transition-colors">{t.main}</Link>
 <Link href={`/${lang}/gallery`} className="text-zinc-100 hover:text-red-500 transition-colors">{t.gallery}</Link>
 <Link href={`/${lang}/news`} className="hover:text-red-500 transition-colors">{t.news}</Link>
-
+<Link href={`/${lang}/support`} className="hover:text-red-500 transition-colors">{t.support}</Link>
         </nav>
+
         <div className="w-10" />
       </header>
 

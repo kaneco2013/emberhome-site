@@ -22,16 +22,16 @@ export default function AllNewsPage() {
 
 // Полный словарь для всех страниц и меню
 const menuTranslations: Record<string, any> = {
-  ru: { main: "ГЛАВНАЯ", gallery: "ГАЛЕРЕЯ", news: "НОВОСТИ", readMore: "ЧИТАТЬ →" },
-  en: { main: "MAIN", gallery: "GALLERY", news: "NEWS", readMore: "READ →" },
-  fi: { main: "KOTI", gallery: "GALLERIA", news: "UUTISET", readMore: "LUE →" },
-  de: { main: "HAUPTSEITE", gallery: "GALERIE", news: "NEWS", readMore: "LESEN →" },
-  fr: { main: "ACCUEIL", gallery: "GALERIE", news: "NOUVELLES", readMore: "LIRE →" },
-  zh: { main: "首页", gallery: "画廊", news: "新闻", readMore: "阅读 →" },
-  ja: { main: "メイン", gallery: "ギャラリー", news: "ニュース", readMore: "読む →" },
-  es: { main: "INICIO", gallery: "GALERÍA", news: "NOTICIAS", readMore: "LEER →" },
-  it: { main: "HOME", gallery: "GALLERIA", news: "NOTIZIE", readMore: "LEGGI →" },
-  sjn: { main: "I-FÂS", gallery: "COVAIN", news: "SINIATH", readMore: "TEG →" }
+  ru: { main: "ГЛАВНАЯ", gallery: "ГАЛЕРЕЯ", news: "НОВОСТИ", support: "Энергия ядра", readMore: "ЧИТАТЬ →" },
+  en: { main: "MAIN", gallery: "GALLERY", news: "NEWS", support: "Core energy",readMore: "READ →" },
+  fi: { main: "KOTI", gallery: "GALLERIA", news: "UUTISET", support: "Ydinenergia",readMore: "LUE →" },
+  de: { main: "HAUPTSEITE", gallery: "GALERIE", news: "NEWS", support: "Kernenergie",readMore: "LESEN →" },
+  fr: { main: "ACCUEIL", gallery: "GALERIE", news: "NOUVELLES", support: "Énergie de base",readMore: "LIRE →" },
+  zh: { main: "首页", gallery: "画廊", news: "新闻", support: "核心能量",readMore: "阅读 →" },
+  ja: { main: "メイン", gallery: "ギャラリー", news: "ニュース", support: "コアエネルギー",readMore: "読む →" },
+  es: { main: "INICIO", gallery: "GALERÍA", news: "NOTICIAS", support: "Energía central",readMore: "LEER →" },
+  it: { main: "HOME", gallery: "GALLERIA", news: "NOTIZIE", support: "Energia fondamentale",readMore: "LEGGI →" },
+  sjn: { main: "I-FÂS", gallery: "COVAIN", news: "SINIATH", support: "Estel voreb",readMore: "TEG →" }
 };
 
 // Получаем переводы для текущего языка (или откат на английский, если язык не найден)
@@ -75,6 +75,7 @@ const t = menuTranslations[lang] || menuTranslations["en"];
 <Link href={`/${lang}`} className="hover:text-red-500 transition-colors">{t.main}</Link>
 <Link href={`/${lang}/gallery`} className="hover:text-red-500 transition-colors">{t.gallery}</Link>
 <Link href={`/${lang}/news`} className="text-zinc-100 hover:text-red-500 transition-colors">{t.news}</Link>
+<Link href={`/${lang}/support`} className="hover:text-red-500 transition-colors">{t.support}</Link>
 
 
         </nav>
