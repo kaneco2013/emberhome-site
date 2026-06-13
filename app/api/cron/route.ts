@@ -170,17 +170,12 @@ if (!isCronAgent && !isTokenValid) {
 
 // Финальный автоматический обработчик для Vercel Cron
 export async function GET(request: Request) {
-  try {
-    const authHeader = request.headers.get('Authorization');
-    if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    // Раз Крон авторизован — принудительно перенаправляем выполнение в нашу POST логику синхронизации с Sanity!
-    return await POST(request);
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
+ try {
+   // Просто перенаправляем запрос в POST, где уже работает наша умная защита по user-agent
+   return await POST(request);
+ } catch (error: any) {
+   return NextResponse.json({ error: error.message }, { status: 500 });
+ }
 }
 
 
