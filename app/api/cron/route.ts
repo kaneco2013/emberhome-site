@@ -157,7 +157,7 @@ export async function POST(request: Request) {
   }
 }
 
-// Чистый экспорт для планировщика Vercel Cron
+// Финальный автоматический обработчик для Vercel Cron
 export async function GET(request: Request) {
   try {
     const authHeader = request.headers.get('Authorization');
@@ -165,10 +165,11 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Возвращаем Vercel успешный ответ, чтобы закрыть задачу
-    return NextResponse.json({ success: true, message: 'Cron trigger accepted' });
+    // Раз Крон авторизован — принудительно перенаправляем выполнение в нашу POST логику синхронизации с Sanity!
+    return await POST(request);
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+
 
