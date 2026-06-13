@@ -31,64 +31,71 @@ if (!isCronAgent && !isTokenValid) {
 
 
 
-    let donations: any[] = [];
+let donations: any[] = [];
 
-        // Безопасный запрос к API целей Boosty (краудфандинг Камчатки)
-    try {
-      const boostyResponse = await fetch(
-        `https://api.boosty.to/v1/blog/emberhome`,
-        {
-          cache: 'no-store',
-          headers: {
-            'Authorization': `Bearer ${process.env.BOOSTY_ACCESS_TOKEN}`,
-            'Accept': 'application/json',
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-          },
-          next: { revalidate: 0 }, 
-        }
-      );
-
- if (boostyResponse.ok) {
- const boostyData = await boostyResponse.json();
- console.log("РЕАЛЬНЫЙ ОТВЕТ ОТ БУСТИ (БЛОГ):", JSON.stringify(boostyData));
- 
- // Извлекаем цели краудфандинга напрямую из данных профиля
- const targets = boostyData.targets || [];
- targets.forEach((target: any) => {
-          if (target.donators && Array.isArray(target.donators)) {
-            donations.push(...target.donators);
-          }
-        });
-      } else {
-        console.warn(`Boosty вернул статус: ${boostyResponse.status}`);
+// Запускаем оба запроса к Boosty одновременно, чтобы сэкономить время крона
+try {
+  const [targetResponse, subscribersResponse] = await Promise.all([
+    fetch(
+      `https: //api.boosty.to/v1/blog/emberhome/target`,
+      {
+        cache: 'no-store',
+        headers: {
+          'Authorization': `Bearer ${process.env.BOOSTY_ACCESS_TOKEN}`,
+          'Accept': 'application/json',
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        },
+        next: { revalidate: 0 },
       }
-    } catch (netError) {
-      console.warn('Внешнее API Boosty недоступно, активирован автономный режим.');
-    }
-
-    // Если в целях пусто, делаем резервный запрос в общих донатеров
-    if (donations.length === 0) {
-      try {
-        const fallbackResponse = await fetch(
-          `https://api.boosty.to/v1/blog/emberhome/donators?limit=50`,
-          {
-            cache: 'no-store',
-            headers: {
-              'Authorization': `Bearer ${process.env.BOOSTY_ACCESS_TOKEN}`,
-              'Accept': 'application/json',
-            }
-          }
-        );
-        if (fallbackResponse.ok) {
-          const fallbackData = await fallbackResponse.json();
-          donations = fallbackData.data || [];
-        }
-      } catch (e) {
-        console.error("Ошибка резервного запроса");
+    ),
+    fetch(
+      `https: //api.boosty.to/v1/blog/emberhome/subscribers?limit=100`,
+      {
+        cache: 'no-store',
+        headers: {
+          'Authorization': `Bearer ${process.env.BOOSTY_ACCESS_TOKEN}`,
+          'Accept': 'application/json',
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        },
+        next: { revalidate: 0 },
       }
-    }
+    )
+  ]);
 
+  // 1. Обрабатываем краудфандинговые ЦЕЛИ (Targets)
+  if (targetResponse.ok) {
+    const boostyTargetData = await targetResponse.json();
+    const targets = boostyTargetData.data || [];
+    targets.forEach((target: any) => {
+      if (target.donators && Array.isArray(target.donators)) {
+        donations.push(...target.donators);
+      }
+    });
+  } else {
+    console.warn(`Boosty цели вернули статус: ${targetResponse.status}`);
+  }
 
+  // 2. Обрабатываем ПОДПИСЧИКОВ по уровням (Subscribers)
+  if (subscribersResponse.ok) {
+    const boostySubData = await subscribersResponse.json();
+    const subscribers = boostySubData.data || [];
+    
+    // Приводим объект подписчика к структуре доната, чтобы нижний код маппинга не сломался
+    subscribers.forEach((sub: any) => {
+      donations.push({
+        id: sub.id || (sub.user && sub.user.id),
+        user: sub.user,
+        amount: sub.price || (sub.level && sub.level.price) || 0, // Цена уровня подписки
+        updatedAt: sub.updatedAt || sub.createdAt
+      });
+    });
+  } else {
+    console.warn(`Boosty подписчики вернули статус: ${subscribersResponse.status}`);
+  }
+
+} catch (netError) {
+  console.warn('Внешнее API Boosty недоступно, активирован автономный режим.');
+}
 
     // Получаем документ страницы поддержки из Sanity (RU локаль)
     const query = `*[_type == "supportPage" && language == "ru"]`;
@@ -154,6 +161,20 @@ if (!isCronAgent && !isTokenValid) {
         .set({ boostyEvents: existingEvents, patronsList: existingPatrons })
         .commit();
     }
+
+    import { revalidatePath } from 'next/cache';
+
+// ... код внутри блока if (hasChanges)
+if (hasChanges) {
+  await writeClient
+    .patch(supportPage._id)
+    .set({ boostyEvents: existingEvents, patronsList: existingPatrons })
+    .commit();
+
+  // Автоматически обновляет страницу со списком спонсоров без перезапуска всего сайта
+  revalidatePath('/support'); 
+}
+
 
     return NextResponse.json({ 
       success: true, 
