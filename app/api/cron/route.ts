@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { createClient } from '@sanity/client';
+import { revalidatePath } from 'next/cache';
 
 // Инициализация клиента Sanity с правами на запись
 const writeClient = createClient({
@@ -13,89 +14,87 @@ const writeClient = createClient({
 
 export async function POST(request: Request) {
   try {
- // Проверка безопасности: сверяем заголовок авторизации от Vercel Cron с нашим секретом
-const authHeader = request.headers.get('Authorization');
-const userAgent = request.headers.get('user-agent') || '';
+    // Проверка безопасности: сверяем заголовок авторизации от Vercel Cron с нашим секретом
+    const authHeader = request.headers.get('Authorization');
+    const userAgent = request.headers.get('user-agent') || '';
 
-// 1. Проверяем, что запрос пришёл именно от официального робота планировщика Vercel
-const isCronAgent = userAgent.includes('vercel-cron');
+    // 1. Проверяем, что запрос пришёл именно от официального робота планировщика Vercel
+    const isCronAgent = userAgent.includes('vercel-cron');
 
-// 2. Резервная проверка токенов для curl запросов
-const isTokenValid = authHeader === `Bearer xnjye;yjcltkfnmdgfytkbeghfdktybz3000` || authHeader === `Bearer ${process.env.CRON_SECRET}`;
+    // 2. Резервная проверка токенов для curl запросов
+    const isTokenValid = authHeader === `Bearer xnjye;yjcltkfnmdgfytkbeghfdktybz3000` || 
+                         authHeader === `Bearer ${process.env.CRON_SECRET}`;
 
-// Если это не робот Vercel и токен не совпал — только тогда выдаём 401
-if (!isCronAgent && !isTokenValid) {
-  return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-}
+    // Если это не робот Vercel и токен не совпал — только тогда выдаём 401
+    if (!isCronAgent && !isTokenValid) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
+    let donations: any[] = [];
 
+    // Запускаем оба запроса к Boosty одновременно, чтобы сэкономить время крона
+    try {
+      const [targetResponse, subscribersResponse] = await Promise.all([
+        fetch(
+          `https://api.boosty.to/v1/blog/emberhome/target`,
+          {
+            cache: 'no-store',
+            headers: {
+              'Authorization': `Bearer ${process.env.BOOSTY_ACCESS_TOKEN}`,
+              'Accept': 'application/json',
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+            },
+            next: { revalidate: 0 },
+          }
+        ),
+        fetch(
+          `https://api.boosty.to/v1/blog/emberhome/subscribers?limit=100`,
+          {
+            cache: 'no-store',
+            headers: {
+              'Authorization': `Bearer ${process.env.BOOSTY_ACCESS_TOKEN}`,
+              'Accept': 'application/json',
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+            },
+            next: { revalidate: 0 },
+          }
+        )
+      ]);
 
-
-let donations: any[] = [];
-
-// Запускаем оба запроса к Boosty одновременно, чтобы сэкономить время крона
-try {
-  const [targetResponse, subscribersResponse] = await Promise.all([
-    fetch(
-      `https://api.boosty.to/v1/blog/emberhome/target`,
-      {
-        cache: 'no-store',
-        headers: {
-          'Authorization': `Bearer ${process.env.BOOSTY_ACCESS_TOKEN}`,
-          'Accept': 'application/json',
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-        },
-        next: { revalidate: 0 },
+      // 1. Обрабатываем краудфандинговые ЦЕЛИ (Targets)
+      if (targetResponse.ok) {
+        const boostyTargetData = await targetResponse.json();
+        const targets = boostyTargetData.data || [];
+        targets.forEach((target: any) => {
+          if (target.donators && Array.isArray(target.donators)) {
+            donations.push(...target.donators);
+          }
+        });
+      } else {
+        console.warn(`Boosty цели вернули статус: ${targetResponse.status}`);
       }
-    ),
-    fetch(
-      `https://api.boosty.to/v1/blog/emberhome/subscribers?limit=100`,
-      {
-        cache: 'no-store',
-        headers: {
-          'Authorization': `Bearer ${process.env.BOOSTY_ACCESS_TOKEN}`,
-          'Accept': 'application/json',
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-        },
-        next: { revalidate: 0 },
+
+      // 2. Обрабатываем ПОДПИСЧИКОВ по уровням (Subscribers)
+      if (subscribersResponse.ok) {
+        const boostySubData = await subscribersResponse.json();
+        const subscribers = boostySubData.data || [];
+        
+        // Приводим объект подписчика к структуре доната, чтобы нижний код маппинга не сломался
+        subscribers.forEach((sub: any) => {
+          donations.push({
+            id: sub.id || (sub.user && sub.user.id),
+            user: sub.user,
+            amount: sub.price || (sub.level && sub.level.price) || 0, // Цена уровня подписки
+            updatedAt: sub.updatedAt || sub.createdAt
+          });
+        });
+      } else {
+        console.warn(`Boosty подписчики вернули статус: ${subscribersResponse.status}`);
       }
-    )
-  ]);
 
-  // 1. Обрабатываем краудфандинговые ЦЕЛИ (Targets)
-  if (targetResponse.ok) {
-    const boostyTargetData = await targetResponse.json();
-    const targets = boostyTargetData.data || [];
-    targets.forEach((target: any) => {
-      if (target.donators && Array.isArray(target.donators)) {
-        donations.push(...target.donators);
-      }
-    });
-  } else {
-    console.warn(`Boosty цели вернули статус: ${targetResponse.status}`);
-  }
-
-  // 2. Обрабатываем ПОДПИСЧИКОВ по уровням (Subscribers)
-  if (subscribersResponse.ok) {
-    const boostySubData = await subscribersResponse.json();
-    const subscribers = boostySubData.data || [];
-    
-    // Приводим объект подписчика к структуре доната, чтобы нижний код маппинга не сломался
-    subscribers.forEach((sub: any) => {
-      donations.push({
-        id: sub.id || (sub.user && sub.user.id),
-        user: sub.user,
-        amount: sub.price || (sub.level && sub.level.price) || 0, // Цена уровня подписки
-        updatedAt: sub.updatedAt || sub.createdAt
-      });
-    });
-  } else {
-    console.warn(`Boosty подписчики вернули статус: ${subscribersResponse.status}`);
-  }
-
-} catch (netError) {
-  console.warn('Внешнее API Boosty недоступно, активирован автономный режим.');
-}
+    } catch (netError) {
+      console.warn('Внешнее API Boosty недоступно, активирован автономный режим.');
+    }
 
     // Получаем документ страницы поддержки из Sanity (RU локаль)
     const query = `*[_type == "supportPage" && language == "ru"]`;
@@ -114,12 +113,11 @@ try {
     donations.forEach((don: any) => {
       // Защита: пропускаем объекты без реальной суммы
       if (!don.amount || don.amount <= 0) return;
-
       const donationId = String(don.id || don.user?.id || Math.random());
       const username = don.user?.name || 'Анонимный Импульс';
       const amount = Number(don.amount);
       
-      // Читаем дату обновления доната (в эндпоинте donators это поле updatedAt)
+      // Читаем дату обновления доната
       const createdAt = don.updatedAt 
         ? new Date(don.updatedAt * 1000).toISOString() 
         : new Date().toISOString();
@@ -160,21 +158,10 @@ try {
         .patch(supportPage._id)
         .set({ boostyEvents: existingEvents, patronsList: existingPatrons })
         .commit();
+
+      // Автоматически обновляет страницу со списком спонсоров без перезапуска всего сайта
+      revalidatePath('/support'); 
     }
-
-    import { revalidatePath } from 'next/cache';
-
-// ... код внутри блока if (hasChanges)
-if (hasChanges) {
-  await writeClient
-    .patch(supportPage._id)
-    .set({ boostyEvents: existingEvents, patronsList: existingPatrons })
-    .commit();
-
-  // Автоматически обновляет страницу со списком спонсоров без перезапуска всего сайта
-  revalidatePath('/support'); 
-}
-
 
     return NextResponse.json({ 
       success: true, 
@@ -191,12 +178,10 @@ if (hasChanges) {
 
 // Финальный автоматический обработчик для Vercel Cron
 export async function GET(request: Request) {
- try {
-   // Просто перенаправляем запрос в POST, где уже работает наша умная защита по user-agent
-   return await POST(request);
- } catch (error: any) {
-   return NextResponse.json({ error: error.message }, { status: 500 });
- }
+  try {
+    // Просто перенаправляем запрос в POST, где уже работает наша умная защита по user-agent
+    return await POST(request);
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
 }
-
-
