@@ -26,7 +26,7 @@ export async function POST(request: Request) {
         // Безопасный запрос к API целей Boosty (краудфандинг Камчатки)
     try {
       const boostyResponse = await fetch(
-        `https ()://api.boosty.to/v1/blog/emberhome/target`,
+        `https://api.boosty.to/v1/blog/emberhome/target`,
         {
           cache: 'no-store',
           headers: {
@@ -60,7 +60,7 @@ export async function POST(request: Request) {
     if (donations.length === 0) {
       try {
         const fallbackResponse = await fetch(
-          `https ()://api.boosty.to/v1/blog/emberhome/donators?limit=50`,
+          `https://api.boosty.to/v1/blog/emberhome/donators?limit=50`,
           {
             cache: 'no-store',
             headers: {
@@ -156,4 +156,9 @@ export async function POST(request: Request) {
     console.error('Критическая ошибка бэкенда:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
+}
+
+// Экспорт для планировщика Vercel Cron (перенаправляет GET на основную логику)
+export async function GET(request: Request) {
+  return POST(request);
 }
