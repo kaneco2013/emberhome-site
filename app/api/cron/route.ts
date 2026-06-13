@@ -15,12 +15,19 @@ export async function POST(request: Request) {
   try {
  // Проверка безопасности: сверяем заголовок авторизации от Vercel Cron с нашим секретом
 const authHeader = request.headers.get('Authorization');
-const isVercelTokenValid = authHeader === `Bearer ${process.env.CRON_SECRET}`;
-const isInternalTokenValid = authHeader === `Bearer xnjye;yjcltkfnmdgfytkbeghfdktybz3000`;
+const userAgent = request.headers.get('user-agent') || '';
 
-if (!isVercelTokenValid && !isInternalTokenValid) {
+// 1. Проверяем, что запрос пришёл именно от официального робота планировщика Vercel
+const isCronAgent = userAgent.includes('vercel-cron');
+
+// 2. Резервная проверка токенов для curl запросов
+const isTokenValid = authHeader === `Bearer xnjye;yjcltkfnmdgfytkbeghfdktybz3000` || authHeader === `Bearer ${process.env.CRON_SECRET}`;
+
+// Если это не робот Vercel и токен не совпал — только тогда выдаём 401
+if (!isCronAgent && !isTokenValid) {
   return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 }
+
 
 
 
