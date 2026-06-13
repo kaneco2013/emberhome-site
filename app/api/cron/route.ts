@@ -36,7 +36,7 @@ if (!isCronAgent && !isTokenValid) {
         // Безопасный запрос к API целей Boosty (краудфандинг Камчатки)
     try {
       const boostyResponse = await fetch(
-        `https://api.boosty.to/v1/blog/emberhome/target`,
+        `https://api.boosty.to/v1/blog/emberhome/targets`,
         {
           cache: 'no-store',
           headers: {
