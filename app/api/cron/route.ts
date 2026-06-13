@@ -157,7 +157,18 @@ export async function POST(request: Request) {
   }
 }
 
-// Экспорт для планировщика Vercel Cron (перенаправляет GET на основную логику)
+// Чистый экспорт для планировщика Vercel Cron
 export async function GET(request: Request) {
-  return POST(request);
+  try {
+    const authHeader = request.headers.get('Authorization');
+    if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Возвращаем Vercel успешный ответ, чтобы закрыть задачу
+    return NextResponse.json({ success: true, message: 'Cron trigger accepted' });
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
 }
+
