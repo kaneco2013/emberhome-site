@@ -615,11 +615,12 @@ function SupportCards({ sanityData, t, cardsData }: { sanityData: any; t: any; c
  <div className="h-[1px] bg-[#ffe6c1]/30 w-full" />
  </div>
  <ul className="flex flex-col space-y-3 font-sans text-xs text-[#ffe6c1] tracking-wide text-left">
- {sanityData?.patronsList?.filter(p => p.tierId === 'tier1').map((patron, idx) => (
-   <li key={idx} className="truncate font-bold pl-1 opacity-85 hover:text-white transition-colors">
-     {patron.username}
-   </li>
- )) || <li className="text-[10px] text-zinc-600 italic pl-1">Пусто</li>}
+{sanityData?.patronsList?.filter((p: any) => p.tierId === 'tier1').map((patron: any, idx: number) => (
+ <li key={idx} className="truncate font-bold pl-1 opacity-85 hover:text-white transition-colors">
+  {patron.username}
+ </li>
+)) || <li className="text-[10px] text-zinc-600 italic pl-1">Пусто</li>}
+
  </ul>
  </div>
 
@@ -630,11 +631,11 @@ function SupportCards({ sanityData, t, cardsData }: { sanityData: any; t: any; c
  <div className="h-[1px] bg-[#3b6b9c]/25 w-full" />
  </div>
  <ul className="flex flex-col space-y-3 font-sans text-xs tracking-wide">
- {sanityData?.patronsList?.filter(p => p.tierId === 'tier2').map((patron, idx) => (
- <li 
- key={idx}
- className="text-left px-4 py-2.5 rounded-none truncate font-bold transition-all duration-300 hover:brightness-125 cursor-default"
- style={{
+ {sanityData?.patronsList?.filter((p: any) => p.tierId === 'tier2').map((patron: any, idx: number) => (
+<li 
+key={idx}
+className="text-left px-4 py-2.5 rounded-none truncate font-bold transition-all duration-300 hover:brightness-125 cursor-default"
+style={{
  color: '#3b6b9c',
  border: '1px solid rgba(59, 107, 156, 0.5)',
  backgroundColor: 'rgba(59, 107, 156, 0.08)',
@@ -654,11 +655,11 @@ function SupportCards({ sanityData, t, cardsData }: { sanityData: any; t: any; c
  <div className="h-[1px] bg-[#a80000]/25 w-full" />
  </div>
  <ul className="flex flex-col space-y-4 font-sans text-xs tracking-wider font-extrabold">
- {sanityData?.patronsList?.filter(p => p.tierId === 'tier3').map((patron, idx) => (
- <li 
- key={idx}
- className="text-left px-4 py-3 rounded-none truncate uppercase transition-all duration-300 hover:brightness-125 cursor-default"
- style={{
+ {sanityData?.patronsList?.filter((p: any) => p.tierId === 'tier3').map((patron: any, idx: number) => (
+<li 
+key={idx}
+className="text-left px-4 py-3 rounded-none truncate uppercase transition-all duration-300 hover:brightness-125 cursor-default"
+style={{
  color: '#a80000',
  border: '1px solid rgba(168, 0, 0, 0.8)',
  backgroundColor: 'rgba(168, 0, 0, 0.08)',
@@ -679,11 +680,11 @@ function SupportCards({ sanityData, t, cardsData }: { sanityData: any; t: any; c
  <div className="h-[1px] bg-[#ffb100]/25 w-full" />
  </div>
  <ul className="flex flex-col space-y-4 font-serif text-xs tracking-[0.15em] uppercase font-black">
- {sanityData?.patronsList?.filter(p => p.tierId === 'tier4').map((patron, idx) => (
- <li 
- key={idx}
- className="text-left px-4 py-3 rounded-none truncate transition-all duration-300 hover:brightness-130 cursor-default"
- style={{
+ {sanityData?.patronsList?.filter((p: any) => p.tierId === 'tier4').map((patron: any, idx: number) => (
+<li 
+key={idx}
+className="text-left px-4 py-3 rounded-none truncate transition-all duration-300 hover:brightness-130 cursor-default"
+style={{
  color: '#ffb100',
  border: '1px solid rgba(255, 177, 0, 0.8)',
  background: 'linear-gradient(90deg, rgba(255, 177, 0, 0.12) 0%, transparent 100%)',
