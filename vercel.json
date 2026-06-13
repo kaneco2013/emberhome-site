@@ -1,7 +1,7 @@
 {
   "crons": [
     {
-      "path": "/api/boosty-sync",
+      "path": "/api/cron",
       "schedule": "*/15 * * * *"
     }
   ]
