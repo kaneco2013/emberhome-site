@@ -596,7 +596,8 @@ function SupportCards({ sanityData, t, cardsData }: { sanityData: any; t: any; c
  </div>
  <ul className="flex flex-col space-y-3 font-mono text-xs text-[#339bf0] tracking-wider text-left">
  {sanityData?.boostyEvents && sanityData.boostyEvents.length > 0 ? (
-   sanityData.boostyEvents.map((event, idx) => (
+   sanityData.boostyEvents.map((event: any, idx: number) => (
+
      <li key={event.eventId || idx} className="truncate font-semibold pl-1 opacity-85 hover:opacity-100 transition-opacity">
        {event.username || 'Анонимный Импульс'}
      </li>
