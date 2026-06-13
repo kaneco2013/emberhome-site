@@ -469,7 +469,7 @@ function SupportCards({ sanityData, t, cardsData }: { sanityData: any; t: any; c
 
       {/* Адаптивная сетка на 5 колонок */}
  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 justify-center">
- {CARDS_DATA.map((card, idx) => (
+{CARDS_DATA.map((card: any, idx: number) => (
 
           <div key={card.id} className="w-full h-48 md:h-56 [perspective:1000px] group cursor-pointer select-none">
             <div className="relative w-full h-full transition-transform duration-700 [transform-style:preserve-3d] group-hover:[transform:rotateY(180deg)]">
