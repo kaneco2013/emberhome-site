@@ -1,5 +1,5 @@
 import { SchemaTypeDefinition } from 'sanity'
-import supportPage from './supportPage.ts'
+import supportPage from './supportPage'
 
 
 export const schema: { types: SchemaTypeDefinition[] } = {
