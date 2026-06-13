@@ -37,7 +37,7 @@ let donations: any[] = [];
 try {
   const [targetResponse, subscribersResponse] = await Promise.all([
     fetch(
-      `https: //api.boosty.to/v1/blog/emberhome/target`,
+      `https://api.boosty.to/v1/blog/emberhome/target`,
       {
         cache: 'no-store',
         headers: {
@@ -49,7 +49,7 @@ try {
       }
     ),
     fetch(
-      `https: //api.boosty.to/v1/blog/emberhome/subscribers?limit=100`,
+      `https://api.boosty.to/v1/blog/emberhome/subscribers?limit=100`,
       {
         cache: 'no-store',
         headers: {
