@@ -13,13 +13,12 @@ const writeClient = createClient({
 
 export async function POST(request: Request) {
   try {
-    // Проверка секретного CRON-ключевого слова для защиты
-    const { searchParams } = new URL(request.url);
-    const cronSecret = searchParams.get('secret');
-    
-    if (cronSecret !== process.env.CRON_SECRET) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+ // Проверка безопасности: сверяем заголовок авторизации от Vercel Cron с нашим секретом
+ const authHeader = request.headers.get('Authorization');
+ if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+   return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+ }
+
 
     let donations: any[] = [];
 

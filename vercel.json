@@ -1,7 +1,7 @@
 {
   "crons": [
     {
-      "path": "/api/boosty-sync?secret=xnjye;yjcltkfnmdgfytkbeghfdktybz3000",
+      "path": "/api/boosty-sync",
       "schedule": "*/15 * * * *"
     }
   ]
