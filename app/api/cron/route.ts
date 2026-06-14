@@ -118,7 +118,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'No support pages found in Sanity' }, { status: 404 });
     }
 
-    // Берем первую страницу как базу для проверки дубликатов на текущий шаг
+    // ТЕПЕРЬ СТРОГО ИСПРАВЛЕНО: Берем первый конкретный документ [0] для чтения текущих массивов
     const basePage = supportPages[0];
     const existingEvents = basePage.boostyEvents || [];
     const existingPatrons = basePage.patronsList || [];
@@ -130,7 +130,6 @@ export async function POST(request: Request) {
       const username = don.user?.name || 'Анонимный Импульс';
       const amount = Number(don.amount);
       
-      // Надежный уникальный ID, предотвращающий появление пустых значений undefined
       const donationId = don.id ? String(don.id) : `gen_id_${username}_${amount}_${index}`;
       
       let createdAt = new Date().toISOString();
@@ -155,23 +154,21 @@ export async function POST(request: Request) {
           (p: any) => p.username.toLowerCase() === username.toLowerCase()
         );
 
-        // --- ЛОГИКА АВТОМАТИЧЕСКОГО РАСПРЕДЕЛЕНИЯ ПО tierId НАЧАЛО ---
-        let finalTierId = 'kamchatka'; // Для разовых донатов (синяя линия)
+        let finalTierId = 'kamchatka'; 
 
         if (don.isSubscription) {
           const subAmount = Number(don.amount);
           
           if (subAmount >= 1000) {
-            finalTierId = 'tier4'; // PYRENODE
+            finalTierId = 'tier4'; 
           } else if (subAmount >= 500) {
-            finalTierId = 'tier3'; // PHYLAKAS
+            finalTierId = 'tier3'; 
           } else if (subAmount >= 300) {
-            finalTierId = 'tier2'; // EPHEMEROS
+            finalTierId = 'tier2'; 
           } else {
-            finalTierId = 'tier1'; // SPITHOULA
+            finalTierId = 'tier1'; 
           }
         }
-        // --- ЛОГИКА АВТОМАТИЧЕСКОГО РАСПРЕДЕЛЕНИЯ ПО tierId КОНЕЦ ---
 
         if (!isPatronSaved && username !== 'Анонимный Импульс') {
           existingPatrons.push({
