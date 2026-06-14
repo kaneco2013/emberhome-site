@@ -26,81 +26,82 @@ export async function POST(request: Request) {
     let donations: any[] = [];
 
     try {
-      // Запрашиваем ТРИ адреса параллельно: Цели, Подписчиков и Разовые донаты
       const [targetResponse, subscribersResponse, donatorsResponse] = await Promise.all([
-        fetch(
-          `https://api.boosty.to/v1/blog/emberhome/target`,
-          {
-            cache: 'no-store',
-            headers: {
-              'Authorization': `Bearer ${process.env.BOOSTY_ACCESS_TOKEN}`,
-              'Accept': 'application/json',
-              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-            },
-            next: { revalidate: 0 },
-          }
-        ),
-        fetch(
-          `https://api.boosty.to/v1/blog/emberhome/subscribers?limit=100`,
-          {
-            cache: 'no-store',
-            headers: {
-              'Authorization': `Bearer ${process.env.BOOSTY_ACCESS_TOKEN}`,
-              'Accept': 'application/json',
-              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-            },
-            next: { revalidate: 0 },
-          }
-        ),
-        fetch(
-          `https://api.boosty.to/v1/blog/emberhome/donators?limit=100`,
-          {
-            cache: 'no-store',
-            headers: {
-              'Authorization': `Bearer ${process.env.BOOSTY_ACCESS_TOKEN}`,
-              'Accept': 'application/json',
-              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-            },
-            next: { revalidate: 0 },
-          }
-        )
+        fetch(`https://api.boosty.to/v1/blog/emberhome/target`, {
+          cache: 'no-store',
+          headers: {
+            'Authorization': `Bearer ${process.env.BOOSTY_ACCESS_TOKEN}`,
+            'Accept': 'application/json',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+          },
+          next: { revalidate: 0 },
+        }),
+        fetch(`https://api.boosty.to/v1/blog/emberhome/subscribers?limit=100`, {
+          cache: 'no-store',
+          headers: {
+            'Authorization': `Bearer ${process.env.BOOSTY_ACCESS_TOKEN}`,
+            'Accept': 'application/json',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+          },
+          next: { revalidate: 0 },
+        }),
+        fetch(`https://api.boosty.to/v1/blog/emberhome/donators?limit=100`, {
+          cache: 'no-store',
+          headers: {
+            'Authorization': `Bearer ${process.env.BOOSTY_ACCESS_TOKEN}`,
+            'Accept': 'application/json',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+          },
+          next: { revalidate: 0 },
+        })
       ]);
 
-      // 1. Обрабатываем ЦЕЛИ
+      // 1. Обрабатываем ЦЕЛИ (Донаты на цель)
       if (targetResponse.ok) {
-        const boostyTargetData = await targetResponse.json();
+        const boostyTargetData = await targetResponse.ok ? await targetResponse.json() : { data: [] };
         const targets = boostyTargetData.data || [];
         targets.forEach((target: any) => {
           if (target.donators && Array.isArray(target.donators)) {
-            donations.push(...target.donators);
+            target.donators.forEach((don: any) => {
+              donations.push({
+                id: don.id || `target_${don.user?.id}_${don.createdAt}`,
+                user: don.user,
+                amount: Number(don.amount || 0),
+                createdAt: don.createdAt,
+                isSubscription: false // Разовый донат (синяя линия)
+              });
+            });
           }
         });
       }
 
-      // 2. Обрабатываем ПОДПИСЧИКОВ по уровням
+      // 2. Обрабатываем ПОДПИСЧИКОВ (Регулярная подписка — желтая линия)
       if (subscribersResponse.ok) {
         const boostySubData = await subscribersResponse.json();
         const subscribers = boostySubData.data || [];
         subscribers.forEach((sub: any) => {
+          const price = sub.price || (sub.level && sub.level.price) || 0;
           donations.push({
-            id: sub.id || (sub.user && sub.user.id),
+            id: sub.id || `sub_${sub.user?.id}_${sub.createdAt}`,
             user: sub.user,
-            amount: sub.price || (sub.level && sub.level.price) || 0,
-            updatedAt: sub.updatedAt || sub.createdAt
+            amount: Number(price),
+            createdAt: sub.createdAt,
+            isSubscription: true // Стабильная подписка (желтая линия)
           });
         });
       }
 
-      // 3. Обрабатываем РАЗОВЫЕ ДОНАТЫ (Сюда упали 10 рублей вашего друга)
+      // 3. Обрабатываем РАЗОВЫЕ ДОНАТЫ (Простой донат вне целей — синяя линия)
       if (donatorsResponse.ok) {
         const boostyDonatorsData = await donatorsResponse.json();
         const donators = boostyDonatorsData.data || [];
         donators.forEach((donator: any) => {
           donations.push({
-            id: donator.id || (donator.user && donator.user.id),
+            id: donator.id || `donator_${donator.user?.id}_${donator.createdAt}`,
             user: donator.user,
-            amount: donator.amount || 0,
-            updatedAt: donator.updatedAt || donator.createdAt
+            amount: Number(donator.amount || 0),
+            createdAt: donator.createdAt,
+            isSubscription: false // Разовый донат (синяя линия)
           });
         });
       }
@@ -109,48 +110,60 @@ export async function POST(request: Request) {
       console.warn('Внешнее API Boosty недоступно.');
     }
 
-    const query = `*[_type == "supportPage" && language == "ru"]`;
+    // НАХОДИМ ВСЕ ДОКУМЕНТЫ СТРАНИЦ ПОДДЕРЖКИ ДЛЯ ВСЕХ ЯЗЫКОВЫХ ЛОКАЛЕЙ
+    const query = `*[_type == "supportPage"]`;
     const supportPages = await writeClient.fetch(query);
-    const supportPage = supportPages && supportPages.length > 0 ? supportPages[0] : null;
 
-    if (!supportPage) {
-      return NextResponse.json({ error: 'Support page document not found in Sanity' }, { status: 404 });
+    if (!supportPages || supportPages.length === 0) {
+      return NextResponse.json({ error: 'No support pages found in Sanity' }, { status: 404 });
     }
 
-    const existingEvents = supportPage.boostyEvents || [];
-    const existingPatrons = supportPage.patronsList || [];
+    // Берем первую страницу как эталон для проверки глобальных дубликатов
+    const basePage = supportPages[0];
+    const existingEvents = basePage.boostyEvents || [];
+    const existingPatrons = basePage.patronsList || [];
     let hasChanges = false;
 
     donations.forEach((don: any) => {
       if (!don.amount || don.amount <= 0) return;
-      const donationId = String(don.id || don.user?.id || Math.random());
+
       const username = don.user?.name || 'Анонимный Импульс';
       const amount = Number(don.amount);
       
-      const createdAt = don.updatedAt 
-        ? new Date(don.updatedAt * 1000).toISOString() 
-        : new Date().toISOString();
+      // Формируем железобетонно уникальный ID транзакции
+      const donationId = String(don.id);
       
+      // Нормализуем дату создания
+      let createdAt = new Date().toISOString();
+      if (don.createdAt) {
+        createdAt = typeof don.createdAt === 'number' 
+          ? new Date(don.createdAt * 1000).toISOString() 
+          : new Date(don.createdAt).toISOString();
+      }
+      
+      // Проверяем, был ли этот донат уже учтен ранее
       const isEventSaved = existingEvents.some((e: any) => e.eventId === donationId);
       
       if (!isEventSaved) {
         existingEvents.push({
-          _key: `event_${donationId}`,
+          _key: `event_${donationId}_${Date.now()}`,
           eventId: donationId,
           username: username,
           amount: amount,
           createdAt: createdAt,
         });
 
+        // Проверяем наличие пользователя в глобальной стене памяти
         const isPatronSaved = existingPatrons.some(
           (p: any) => p.username.toLowerCase() === username.toLowerCase()
         );
 
         if (!isPatronSaved && username !== 'Анонимный Импульс') {
           existingPatrons.push({
-            _key: `patron_${donationId}`,
+            _key: `patron_${donationId}_${Date.now()}`,
             username: username,
-            tierId: 'kamchatka', 
+            // Если подписка — даем tierId для стабильной желтой линии, если разовый — синяя камчатка
+            tierId: don.isSubscription ? 'stable_yellow_tier' : 'kamchatka', 
             isActive: true,
           });
         }
@@ -159,12 +172,19 @@ export async function POST(request: Request) {
       }
     });
 
+    // СОХРАНЯЕМ ОБНОВЛЕНИЯ ВО ВСЕ ЯЗЫКОВЫЕ СТРАНИЦЫ ОДНОВРЕМЕННО
     if (hasChanges) {
-      await writeClient
-        .patch(supportPage._id)
-        .set({ boostyEvents: existingEvents, patronsList: existingPatrons })
-        .commit();
+      const updatePromises = supportPages.map((page: any) => {
+        return writeClient
+          .patch(page._id)
+          .set({ 
+            boostyEvents: existingEvents, 
+            patronsList: existingPatrons 
+          })
+          .commit();
+      });
 
+      await Promise.all(updatePromises);
       revalidatePath('/support'); 
     }
 
@@ -172,7 +192,7 @@ export async function POST(request: Request) {
       success: true, 
       syncedCount: donations.length, 
       hasUpdates: hasChanges,
-      message: hasChanges ? 'Синхронизация успешна!' : 'База данных уже содержит эти записи.'
+      message: hasChanges ? 'Синхронизация успешна на всех языках!' : 'База данных уже содержит эти записи.'
     });
 
   } catch (error: any) {
