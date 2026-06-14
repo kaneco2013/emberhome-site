@@ -56,9 +56,9 @@ export async function POST(request: Request) {
         })
       ]);
 
-      // 1. Обрабатываем ЦЕЛИ (Донаты на цель)
+      // 1. Донаты на цели
       if (targetResponse.ok) {
-        const boostyTargetData = await targetResponse.ok ? await targetResponse.json() : { data: [] };
+        const boostyTargetData = await targetResponse.json();
         const targets = boostyTargetData.data || [];
         targets.forEach((target: any) => {
           if (target.donators && Array.isArray(target.donators)) {
@@ -68,14 +68,14 @@ export async function POST(request: Request) {
                 user: don.user,
                 amount: Number(don.amount || 0),
                 createdAt: don.createdAt,
-                isSubscription: false // Разовый донат (синяя линия)
+                isSubscription: false
               });
             });
           }
         });
       }
 
-      // 2. Обрабатываем ПОДПИСЧИКОВ (Регулярная подписка — желтая линия)
+      // 2. Регулярные подписчики
       if (subscribersResponse.ok) {
         const boostySubData = await subscribersResponse.json();
         const subscribers = boostySubData.data || [];
@@ -86,12 +86,12 @@ export async function POST(request: Request) {
             user: sub.user,
             amount: Number(price),
             createdAt: sub.createdAt,
-            isSubscription: true // Стабильная подписка (желтая линия)
+            isSubscription: true
           });
         });
       }
 
-      // 3. Обрабатываем РАЗОВЫЕ ДОНАТЫ (Простой донат вне целей — синяя линия)
+      // 3. Разовые донаты без целей
       if (donatorsResponse.ok) {
         const boostyDonatorsData = await donatorsResponse.json();
         const donators = boostyDonatorsData.data || [];
@@ -101,7 +101,7 @@ export async function POST(request: Request) {
             user: donator.user,
             amount: Number(donator.amount || 0),
             createdAt: donator.createdAt,
-            isSubscription: false // Разовый донат (синяя линия)
+            isSubscription: false
           });
         });
       }
@@ -110,7 +110,7 @@ export async function POST(request: Request) {
       console.warn('Внешнее API Boosty недоступно.');
     }
 
-    // НАХОДИМ ВСЕ ДОКУМЕНТЫ СТРАНИЦ ПОДДЕРЖКИ ДЛЯ ВСЕХ ЯЗЫКОВЫХ ЛОКАЛЕЙ
+    // Находим абсолютно все страницы поддержки для синхронизации локалей
     const query = `*[_type == "supportPage"]`;
     const supportPages = await writeClient.fetch(query);
 
@@ -118,22 +118,21 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'No support pages found in Sanity' }, { status: 404 });
     }
 
-    // Берем первую страницу как эталон для проверки глобальных дубликатов
+    // Берем первую страницу как базу для проверки дубликатов на текущий шаг
     const basePage = supportPages[0];
     const existingEvents = basePage.boostyEvents || [];
     const existingPatrons = basePage.patronsList || [];
     let hasChanges = false;
 
-    donations.forEach((don: any) => {
+    donations.forEach((don: any, index: number) => {
       if (!don.amount || don.amount <= 0) return;
 
       const username = don.user?.name || 'Анонимный Импульс';
       const amount = Number(don.amount);
       
-      // Формируем железобетонно уникальный ID транзакции
-      const donationId = String(don.id);
+      // Надежный уникальный ID, предотвращающий появление пустых значений undefined
+      const donationId = don.id ? String(don.id) : `gen_id_${username}_${amount}_${index}`;
       
-      // Нормализуем дату создания
       let createdAt = new Date().toISOString();
       if (don.createdAt) {
         createdAt = typeof don.createdAt === 'number' 
@@ -141,7 +140,6 @@ export async function POST(request: Request) {
           : new Date(don.createdAt).toISOString();
       }
       
-      // Проверяем, был ли этот донат уже учтен ранее
       const isEventSaved = existingEvents.some((e: any) => e.eventId === donationId);
       
       if (!isEventSaved) {
@@ -153,17 +151,33 @@ export async function POST(request: Request) {
           createdAt: createdAt,
         });
 
-        // Проверяем наличие пользователя в глобальной стене памяти
         const isPatronSaved = existingPatrons.some(
           (p: any) => p.username.toLowerCase() === username.toLowerCase()
         );
+
+        // --- ЛОГИКА АВТОМАТИЧЕСКОГО РАСПРЕДЕЛЕНИЯ ПО tierId НАЧАЛО ---
+        let finalTierId = 'kamchatka'; // Для разовых донатов (синяя линия)
+
+        if (don.isSubscription) {
+          const subAmount = Number(don.amount);
+          
+          if (subAmount >= 1000) {
+            finalTierId = 'tier4'; // PYRENODE
+          } else if (subAmount >= 500) {
+            finalTierId = 'tier3'; // PHYLAKAS
+          } else if (subAmount >= 300) {
+            finalTierId = 'tier2'; // EPHEMEROS
+          } else {
+            finalTierId = 'tier1'; // SPITHOULA
+          }
+        }
+        // --- ЛОГИКА АВТОМАТИЧЕСКОГО РАСПРЕДЕЛЕНИЯ ПО tierId КОНЕЦ ---
 
         if (!isPatronSaved && username !== 'Анонимный Импульс') {
           existingPatrons.push({
             _key: `patron_${donationId}_${Date.now()}`,
             username: username,
-            // Если подписка — даем tierId для стабильной желтой линии, если разовый — синяя камчатка
-            tierId: don.isSubscription ? 'stable_yellow_tier' : 'kamchatka', 
+            tierId: finalTierId, 
             isActive: true,
           });
         }
@@ -172,7 +186,7 @@ export async function POST(request: Request) {
       }
     });
 
-    // СОХРАНЯЕМ ОБНОВЛЕНИЯ ВО ВСЕ ЯЗЫКОВЫЕ СТРАНИЦЫ ОДНОВРЕМЕННО
+    // Сохраняем изменения во ВСЕ языковые страницы одновременно
     if (hasChanges) {
       const updatePromises = supportPages.map((page: any) => {
         return writeClient
