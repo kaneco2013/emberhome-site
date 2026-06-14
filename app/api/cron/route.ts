@@ -3,7 +3,6 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@sanity/client';
 import { revalidatePath } from 'next/cache';
 
-// Инициализация клиента Sanity с правами на запись
 const writeClient = createClient({
   projectId: process.env.NEXT_PUBLIC_SANITY_PROJECT_ID,
   dataset: process.env.NEXT_PUBLIC_SANITY_DATASET,
@@ -14,27 +13,21 @@ const writeClient = createClient({
 
 export async function POST(request: Request) {
   try {
-    // Проверка безопасности: сверяем заголовок авторизации от Vercel Cron с нашим секретом
     const authHeader = request.headers.get('Authorization');
     const userAgent = request.headers.get('user-agent') || '';
-
-    // 1. Проверяем, что запрос пришёл именно от официального робота планировщика Vercel
     const isCronAgent = userAgent.includes('vercel-cron');
-
-    // 2. Резервная проверка токенов для curl запросов
     const isTokenValid = authHeader === `Bearer xnjye;yjcltkfnmdgfytkbeghfdktybz3000` || 
                          authHeader === `Bearer ${process.env.CRON_SECRET}`;
 
-    // Если это не робот Vercel и токен не совпал — только тогда выдаём 401
     if (!isCronAgent && !isTokenValid) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     let donations: any[] = [];
 
-    // Запускаем оба запроса к Boosty одновременно, чтобы сэкономить время крона
     try {
-      const [targetResponse, subscribersResponse] = await Promise.all([
+      // Запрашиваем ТРИ адреса параллельно: Цели, Подписчиков и Разовые донаты
+      const [targetResponse, subscribersResponse, donatorsResponse] = await Promise.all([
         fetch(
           `https://api.boosty.to/v1/blog/emberhome/target`,
           {
@@ -58,10 +51,22 @@ export async function POST(request: Request) {
             },
             next: { revalidate: 0 },
           }
+        ),
+        fetch(
+          `https://api.boosty.to/v1/blog/emberhome/donators?limit=100`,
+          {
+            cache: 'no-store',
+            headers: {
+              'Authorization': `Bearer ${process.env.BOOSTY_ACCESS_TOKEN}`,
+              'Accept': 'application/json',
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+            },
+            next: { revalidate: 0 },
+          }
         )
       ]);
 
-      // 1. Обрабатываем краудфандинговые ЦЕЛИ (Targets)
+      // 1. Обрабатываем ЦЕЛИ
       if (targetResponse.ok) {
         const boostyTargetData = await targetResponse.json();
         const targets = boostyTargetData.data || [];
@@ -70,33 +75,40 @@ export async function POST(request: Request) {
             donations.push(...target.donators);
           }
         });
-      } else {
-        console.warn(`Boosty цели вернули статус: ${targetResponse.status}`);
       }
 
-      // 2. Обрабатываем ПОДПИСЧИКОВ по уровням (Subscribers)
+      // 2. Обрабатываем ПОДПИСЧИКОВ по уровням
       if (subscribersResponse.ok) {
         const boostySubData = await subscribersResponse.json();
         const subscribers = boostySubData.data || [];
-        
-        // Приводим объект подписчика к структуре доната, чтобы нижний код маппинга не сломался
         subscribers.forEach((sub: any) => {
           donations.push({
             id: sub.id || (sub.user && sub.user.id),
             user: sub.user,
-            amount: sub.price || (sub.level && sub.level.price) || 0, // Цена уровня подписки
+            amount: sub.price || (sub.level && sub.level.price) || 0,
             updatedAt: sub.updatedAt || sub.createdAt
           });
         });
-      } else {
-        console.warn(`Boosty подписчики вернули статус: ${subscribersResponse.status}`);
+      }
+
+      // 3. Обрабатываем РАЗОВЫЕ ДОНАТЫ (Сюда упали 10 рублей вашего друга)
+      if (donatorsResponse.ok) {
+        const boostyDonatorsData = await donatorsResponse.json();
+        const donators = boostyDonatorsData.data || [];
+        donators.forEach((donator: any) => {
+          donations.push({
+            id: donator.id || (donator.user && donator.user.id),
+            user: donator.user,
+            amount: donator.amount || 0,
+            updatedAt: donator.updatedAt || donator.createdAt
+          });
+        });
       }
 
     } catch (netError) {
-      console.warn('Внешнее API Boosty недоступно, активирован автономный режим.');
+      console.warn('Внешнее API Boosty недоступно.');
     }
 
-    // Получаем документ страницы поддержки из Sanity (RU локаль)
     const query = `*[_type == "supportPage" && language == "ru"]`;
     const supportPages = await writeClient.fetch(query);
     const supportPage = supportPages && supportPages.length > 0 ? supportPages[0] : null;
@@ -109,20 +121,16 @@ export async function POST(request: Request) {
     const existingPatrons = supportPage.patronsList || [];
     let hasChanges = false;
 
-    // Обработка и маппинг полученных транзакций
     donations.forEach((don: any) => {
-      // Защита: пропускаем объекты без реальной суммы
       if (!don.amount || don.amount <= 0) return;
       const donationId = String(don.id || don.user?.id || Math.random());
       const username = don.user?.name || 'Анонимный Импульс';
       const amount = Number(don.amount);
       
-      // Читаем дату обновления доната
       const createdAt = don.updatedAt 
         ? new Date(don.updatedAt * 1000).toISOString() 
         : new Date().toISOString();
       
-      // 1. Проверяем, сохранен ли уже этот лог доната
       const isEventSaved = existingEvents.some((e: any) => e.eventId === donationId);
       
       if (!isEventSaved) {
@@ -134,7 +142,6 @@ export async function POST(request: Request) {
           createdAt: createdAt,
         });
 
-        // 2. Проверяем, есть ли имя в глобальном списке "Дани памяти"
         const isPatronSaved = existingPatrons.some(
           (p: any) => p.username.toLowerCase() === username.toLowerCase()
         );
@@ -143,7 +150,7 @@ export async function POST(request: Request) {
           existingPatrons.push({
             _key: `patron_${donationId}`,
             username: username,
-            tierId: 'kamchatka', // По дефолту улетает в столбец разового импульса Камчатки
+            tierId: 'kamchatka', 
             isActive: true,
           });
         }
@@ -152,14 +159,12 @@ export async function POST(request: Request) {
       }
     });
 
-    // Записываем обновления в Sanity только если появились новые донаты
     if (hasChanges) {
       await writeClient
         .patch(supportPage._id)
         .set({ boostyEvents: existingEvents, patronsList: existingPatrons })
         .commit();
 
-      // Автоматически обновляет страницу со списком спонсоров без перезапуска всего сайта
       revalidatePath('/support'); 
     }
 
@@ -176,10 +181,8 @@ export async function POST(request: Request) {
   }
 }
 
-// Финальный автоматический обработчик для Vercel Cron
 export async function GET(request: Request) {
   try {
-    // Просто перенаправляем запрос в POST, где уже работает наша умная защита по user-agent
     return await POST(request);
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
