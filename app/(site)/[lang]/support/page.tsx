@@ -1,4 +1,5 @@
 'use client';
+export const dynamic = 'force-dynamic'; // Всегда запрашивать свежие данные из базы без кэша!
 
 import React, { useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
@@ -74,11 +75,7 @@ export default function SupportPage({ params }: SupportPageProps) {
           patronsList
         }`;
         
-const data = await client.fetch(
-  query, 
-  { lang: currentLang }, 
-  { cache: 'no-store', next: { revalidate: 0 } }
-);
+const data = await client.fetch(query, { lang: currentLang });
 if (data && data.length > 0) {
   setSanityData(data[0]);
 } else {
