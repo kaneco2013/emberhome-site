@@ -116,11 +116,12 @@ const { timelineSegments, totalCurrentEnergy } = useMemo(() => {
     // Чтобы не дублировать Камчатку, если она уже посчитана в patronsList
     const isAlreadyCounted = activePatrons.some((p: any) => p.username === event.username);
     if (!isAlreadyCounted && event.amount) {
-      const timestamp = new Date(event.createdAt).getTime();
-      const daysPassed = (Date.now() - timestamp) / (1000 * 60 * 60 * 24);
-      if (daysPassed < 30) {
-        const currentEnergy = (event.amount / 100) * (1 - daysPassed / 30); // 10 рублей = 0.1 ЕД
-        if (currentEnergy > 0) {
+ const timestamp = new Date(event.createdAt).getTime();
+ const daysPassed = (Date.now() - timestamp) / (1000 * 60 * 60 * 24);
+ if (daysPassed < 30) {
+ const currentEnergy = (Number(event.amount) / 150) * (1 - daysPassed / 30); // 150 рублей = 1 ЕД энергии
+ if (currentEnergy > 0) {
+
           segments.push({ type: 'blue', energyValue: currentEnergy });
           total += currentEnergy;
         }
@@ -589,14 +590,18 @@ function SupportCards({ sanityData, t, cardsData }: { sanityData: any; t: any; c
  <div className="h-[1px] bg-[#339bf0]/20 w-full" />
  </div>
  <ul className="flex flex-col space-y-3 font-mono text-xs text-[#339bf0] tracking-wider text-left">
- {sanityData?.boostyEvents && sanityData.boostyEvents.length > 0 ? (
-   sanityData.boostyEvents.map((event: any, idx: number) => (
+{sanityData?.boostyEvents && sanityData.boostyEvents.length > 0 ? (
+  sanityData.boostyEvents
+    .filter((event: any, index: number, self: any[]) => 
+      self.findIndex((e: any) => e.username?.toLowerCase() === event.username?.toLowerCase()) === index
+    )
+    .map((event: any, idx: number) => (
+      <li key={event.eventId || idx} className="truncate font-semibold pl-1 opacity-85 hover:opacity-100 transition-opacity">
+        {event.username || 'Анонимный Импульс'}
+      </li>
+    ))
+) : (
 
-     <li key={event.eventId || idx} className="truncate font-semibold pl-1 opacity-85 hover:opacity-100 transition-opacity">
-       {event.username || 'Анонимный Импульс'}
-     </li>
-   ))
- ) : (
    <li className="text-[10px] text-zinc-600 italic pl-1">Ожидание импульса...</li>
  )}
  </ul>
