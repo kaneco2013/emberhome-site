@@ -66,70 +66,71 @@ export async function POST(request: Request) {
     
     let hasChanges = false;
 
-    // 3. Обрабатываем разовые донаты
-    rawDonations.forEach((don: any, index: number) => {
-      const amount = Number(don.amount || 0);
-      if (amount <= 0) return;
+    // 3. Обрабатываем разовые донаты (только если это массив)
+    if (Array.isArray(rawDonations)) {
+      rawDonations.forEach((don: any, index: number) => {
+        const amount = Number(don.amount || 0);
+        if (amount <= 0) return;
 
-      const donationId = String(don.id);
-      const username = don.user?.name || 'Анонимный Импульс';
-      
-      const isEventSaved = existingEvents.some((e: any) => String(e.eventId) === donationId);
-      
-      if (!isEventSaved) {
-        existingEvents.push({
-          _key: `event_${donationId}_${Date.now()}_${index}`,
-          _type: 'boostyEvent', // Защита от красного экрана Studio!
-          eventId: donationId,
-          username: username,
-          amount: amount,
-          createdAt: don.createdAt ? new Date(don.createdAt * 1000).toISOString() : new Date().toISOString(),
-        });
-        hasChanges = true;
-      }
-    });
-
-    // 4. Обрабатываем постоянных подписчиков
-    rawSubscribers.forEach((sub: any, index: number) => {
-      const username = sub.user?.name;
-      if (!username || username === 'Анонимный Импульс') return;
-
-      // Вычисляем цену подписки
-      const price = Number(sub.price || (sub.level && sub.level.price) || 0);
-      if (price <= 0) return;
-
-      // Маппинг уровней подписки в рублях
-      let calculatedTierId = 'tier1';
-      if (price >= 1200) {
-        calculatedTierId = 'tier4';
-      } else if (price >= 600) {
-        calculatedTierId = 'tier3';
-      } else if (price >= 300) {
-        calculatedTierId = 'tier2';
-      }
-
-      const isPatronSaved = existingPatrons.some(
-        (p: any) => p.username && p.username.toLowerCase() === username.toLowerCase()
-      );
-
-      if (!isPatronSaved) {
-        existingPatrons.push({
-          _key: `patron_${sub.id || index}_${Date.now()}_${index}`,
-          _type: 'patron', // Защита от красного экрана Studio!
-          username: username,
-          tierId: calculatedTierId,
-          isActive: true,
-        });
-        hasChanges = true;
-      } else {
-        // Если подписчик уже есть, но поменял тир — обновляем его уровень
-        const patronIndex = existingPatrons.findIndex((p: any) => p.username && p.username.toLowerCase() === username.toLowerCase());
-        if (patronIndex !== -1 && existingPatrons[patronIndex].tierId !== calculatedTierId) {
-          existingPatrons[patronIndex].tierId = calculatedTierId;
+        const donationId = String(don.id);
+        const username = don.user?.name || 'Анонимный Импульс';
+        
+        const isEventSaved = existingEvents.some((e: any) => String(e.eventId) === donationId);
+        
+        if (!isEventSaved) {
+          existingEvents.push({
+            _key: `event_${donationId}_${Date.now()}_${index}`,
+            _type: 'boostyEvent',
+            eventId: donationId,
+            username: username,
+            amount: amount,
+            createdAt: don.createdAt ? new Date(don.createdAt * 1000).toISOString() : new Date().toISOString(),
+          });
           hasChanges = true;
         }
-      }
-    });
+      });
+    }
+
+    // 4. Обрабатываем постоянных подписчиков (только если это массив)
+    if (Array.isArray(rawSubscribers)) {
+      rawSubscribers.forEach((sub: any, index: number) => {
+        const username = sub.user?.name;
+        if (!username || username === 'Анонимный Импульс') return;
+
+        const price = Number(sub.price || (sub.level && sub.level.price) || 0);
+        if (price <= 0) return;
+
+        let calculatedTierId = 'tier1';
+        if (price >= 1200) {
+          calculatedTierId = 'tier4';
+        } else if (price >= 600) {
+          calculatedTierId = 'tier3';
+        } else if (price >= 300) {
+          calculatedTierId = 'tier2';
+        }
+
+        const isPatronSaved = existingPatrons.some(
+          (p: any) => p.username && p.username.toLowerCase() === username.toLowerCase()
+        );
+
+        if (!isPatronSaved) {
+          existingPatrons.push({
+            _key: `patron_${sub.id || index}_${Date.now()}_${index}`,
+            _type: 'patron',
+            username: username,
+            tierId: calculatedTierId,
+            isActive: true,
+          });
+          hasChanges = true;
+        } else {
+          const patronIndex = existingPatrons.findIndex((p: any) => p.username && p.username.toLowerCase() === username.toLowerCase());
+          if (patronIndex !== -1 && existingPatrons[patronIndex].tierId !== calculatedTierId) {
+            existingPatrons[patronIndex].tierId = calculatedTierId;
+            hasChanges = true;
+          }
+        }
+      });
+    }
 
     // 5. Записываем идентичные списки во ВСЕ найденные языковые документы
     if (hasChanges) {
