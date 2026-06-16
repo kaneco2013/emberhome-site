@@ -26,32 +26,30 @@ export async function POST(request: Request) {
     let donations: any[] = [];
 
     try {
+      // Заголовки-маскировка, чтобы Boosty не блокировал американские сервера Vercel
+      const boostyHeaders = {
+        'Authorization': `Bearer ${process.env.BOOSTY_ACCESS_TOKEN}`,
+        'Accept': 'application/json',
+        'Accept-Language': 'ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7',
+        'Origin': 'https://boosty.to',
+        'Referer': 'https://boosty.to/',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      };
+
       const [targetResponse, subscribersResponse, donatorsResponse] = await Promise.all([
-        fetch(`https://boosty.to`, {
+        fetch(`https://api.boosty.to/v1/blog/emberhome/target`, {
           cache: 'no-store',
-          headers: {
-            'Authorization': `Bearer ${process.env.BOOSTY_ACCESS_TOKEN}`,
-            'Accept': 'application/json',
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-          },
+          headers: boostyHeaders,
           next: { revalidate: 0 },
         }),
-        fetch(`https://boosty.to`, {
+        fetch(`https://api.boosty.to/v1/blog/emberhome/subscribers?limit=100`, {
           cache: 'no-store',
-          headers: {
-            'Authorization': `Bearer ${process.env.BOOSTY_ACCESS_TOKEN}`,
-            'Accept': 'application/json',
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-          },
+          headers: boostyHeaders,
           next: { revalidate: 0 },
         }),
-        fetch(`https://boosty.to`, {
+        fetch(`https://api.boosty.to/v1/blog/emberhome/donators?limit=100`, {
           cache: 'no-store',
-          headers: {
-            'Authorization': `Bearer ${process.env.BOOSTY_ACCESS_TOKEN}`,
-            'Accept': 'application/json',
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-          },
+          headers: boostyHeaders,
           next: { revalidate: 0 },
         })
       ]);
