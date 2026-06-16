@@ -203,14 +203,39 @@ export async function POST(request: Request) {
       revalidatePath('/support'); 
     }
 
-    return NextResponse.json({ 
-      success: true, 
-      syncedCount: donations.length, 
+    // Собираем диагностику по первой (русской) странице для наглядности в терминале
+    const debugPage = supportPages[0] || {};
+    const sanityEventsDebug = Array.isArray(debugPage.boostyEvents) 
+      ? debugPage.boostyEvents.map((e: any) => `${e.username}(ID:${e.eventId}, ${e.amount}р)`)
+      : [];
+    const sanityPatronsDebug = Array.isArray(debugPage.patronsList)
+      ? debugPage.patronsList.map((p: any) => `${p.username}(Tier:${p.tierId})`)
+      : [];
+
+    const boostyDonationsDebug = donations.map((d: any) => ({
+      name: d.user?.name || 'Аноним',
+      amount: d.amount,
+      id: d.id,
+      isSub: d.isSubscription
+    }));
+
+    return NextResponse.json({
+      success: true,
       updatedPagesCount: totalUpdatedPages,
-      message: totalUpdatedPages > 0 
-        ? `Синхронизация успешна! Обновлено языковых страниц: ${totalUpdatedPages}` 
-        : 'База данных уже содержит все актуальные записи.'
-    });
+      // 1. Что реально прилетело из Boosty:
+      boostyData: {
+        totalFound: donations.length,
+        list: boostyDonationsDebug
+      },
+      // 2. Что прямо сейчас лежит в Sanity:
+      sanityDataSnapshot: {
+        eventsInDb: sanityEventsDebug,
+        patronsInDb: sanityPatronsDebug
+      },
+      // 3. Логика сравнения:
+      matchingLogic: "Сверка идет по eventId для логов и по username (регистронезависимо) для патронов."
+    }, { status: 200 });
+
 
   } catch (error: any) {
     console.error('Критическая ошибка бэкенда:', error);
