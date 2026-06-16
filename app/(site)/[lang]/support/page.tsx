@@ -1,12 +1,11 @@
 'use client';
-export const dynamic = 'force-dynamic'; // Всегда запрашивать свежие данные из базы без кэша!
 
 import React, { useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { client } from '@/sanity/lib/client';
 
-const GOAL_ENERGY = 5000;
+const GOAL_ENERGY = 1000;
 const ANIMATION_DURATION_MS = 2500;
 
 // ИСПРАВЛЕННЫЕ КООРДИНАТЫ: Фигурки опущены ниже строго на линию, а 6-я отодвинута от Ядра
@@ -75,7 +74,15 @@ export default function SupportPage({ params }: SupportPageProps) {
           patronsList
         }`;
         
-const data = await client.fetch(query, { lang: currentLang });
+const data = await client.fetch(
+  query, 
+  { lang: currentLang }, 
+  { 
+    useCdn: false, 
+    stega: false,
+    next: { revalidate: 0 } 
+  }
+);
 if (data && data.length > 0) {
   setSanityData(data[0]);
 } else {
