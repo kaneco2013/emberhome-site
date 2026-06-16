@@ -4,230 +4,162 @@ import { createClient } from '@sanity/client';
 import { revalidatePath } from 'next/cache';
 
 const writeClient = createClient({
- projectId: process.env.NEXT_PUBLIC_SANITY_PROJECT_ID,
- dataset: process.env.NEXT_PUBLIC_SANITY_DATASET,
- apiVersion: '2026-06-12',
- useCdn: false, 
- token: process.env.SANITY_WRITE_TOKEN, 
+  projectId: 'n6uv6b42',
+  dataset: 'production',
+  apiVersion: '2026-06-12',
+  useCdn: false, 
+  token: process.env.SANITY_WRITE_TOKEN, 
 });
 
-interface BoostyUser {
- id: number;
- name: string;
- [key: string]: any;
-}
-
-interface DonationItem {
- id: string;
- user?: BoostyUser;
- amount: number;
- createdAt: number | string;
- isSubscription: boolean;
-}
-
 export async function POST(request: Request) {
- try {
- const authHeader = request.headers.get('Authorization');
- const userAgent = request.headers.get('user-agent') || '';
- const isCronAgent = userAgent.includes('vercel-cron');
- const isTokenValid = authHeader === `Bearer xnjye;yjcltkfnmdgfytkbeghfdktybz3000` || 
- authHeader === `Bearer ${process.env.CRON_SECRET}`;
+  try {
+    const authHeader = request.headers.get('Authorization');
+    if (authHeader !== `Bearer xnjye;yjcltkfnmdgfytkbeghfdktybz3000`) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
- if (!isCronAgent && !isTokenValid) {
- return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
- }
+    // 1. Опрашиваем два эндпоинта Boosty параллельно
+    const [donationsResponse, subscribersResponse] = await Promise.all([
+      fetch(`https://api.boosty.to/v1/blog/emberhome/sales/donation/?limit=100`, {
+        cache: 'no-store',
+        headers: {
+          'Authorization': `Bearer ${process.env.BOOSTY_ACCESS_TOKEN}`,
+          'Accept': 'application/json',
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        }
+      }),
+      fetch(`https://api.boosty.to/v1/blog/emberhome/subscribers?limit=100`, {
+        cache: 'no-store',
+        headers: {
+          'Authorization': `Bearer ${process.env.BOOSTY_ACCESS_TOKEN}`,
+          'Accept': 'application/json',
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        }
+      })
+    ]);
 
- let donations: DonationItem[] = [];
+    if (!donationsResponse.ok || !subscribersResponse.ok) {
+      return NextResponse.json({ 
+        error: 'Boosty API error', 
+        donationsStatus: donationsResponse.status,
+        subscribersStatus: subscribersResponse.status 
+      }, { status: 500 });
+    }
 
- try {
- const [targetResponse, subscribersResponse, donatorsResponse] = await Promise.all([
- fetch(`https: //api.boosty.to/v1/blog/emberhome/target`, {
- cache: 'no-store',
- headers: {
- 'Authorization': `Bearer ${process.env.BOOSTY_ACCESS_TOKEN}`,
- 'Accept': 'application/json',
- 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
- },
- next: { revalidate: 0 },
- }),
- fetch(`https: //api.boosty.to/v1/blog/emberhome/subscribers?limit=100`, {
- cache: 'no-store',
- headers: {
- 'Authorization': `Bearer ${process.env.BOOSTY_ACCESS_TOKEN}`,
- 'Accept': 'application/json',
- 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
- },
- next: { revalidate: 0 },
- }),
- fetch(`https: //api.boosty.to/v1/blog/emberhome/donators?limit=100`, {
- cache: 'no-store',
- headers: {
- 'Authorization': `Bearer ${process.env.BOOSTY_ACCESS_TOKEN}`,
- 'Accept': 'application/json',
- 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
- },
- next: { revalidate: 0 },
- })
- ]);
+    const donationsData = await donationsResponse.json();
+    const subscribersData = await subscribersResponse.json();
 
- // 1. Донаты на цели
- if (targetResponse.ok) {
- const boostyTargetData = await targetResponse.json();
- const targets = boostyTargetData.data || [];
- targets.forEach((target: any) => {
- if (target.donators && Array.isArray(target.donators)) {
- target.donators.forEach((don: any) => {
- donations.push({
- id: don.id ? String(don.id) : `target_${don.user?.id}_${don.createdAt}`,
- user: don.user,
- amount: Number(don.amount || 0),
- createdAt: don.createdAt,
- isSubscription: false
- });
- });
- }
- });
- }
+    const rawDonations = donationsData.data || [];
+    const rawSubscribers = subscribersData.data || [];
 
- // 2. Регулярные подписчики
- if (subscribersResponse.ok) {
- const boostySubData = await subscribersResponse.json();
- const subscribers = boostySubData.data || [];
- subscribers.forEach((sub: any) => {
- const price = sub.price || (sub.level && sub.level.price) || 0;
- donations.push({
- id: sub.id ? String(sub.id) : `sub_${sub.user?.id}_${sub.createdAt}`,
- user: sub.user,
- amount: Number(price),
- createdAt: sub.createdAt,
- isSubscription: true
- });
- });
- }
+    // 2. Получаем все языковые страницы поддержки из Sanity
+    const supportPages = await writeClient.fetch(`*[_type == "supportPage"]`);
+    if (!supportPages || supportPages.length === 0) {
+      return NextResponse.json({ error: 'No support pages found in Sanity' }, { status: 404 });
+    }
 
- // 3. Разовые донаты без целей
- if (donatorsResponse.ok) {
- const boostyDonatorsData = await donatorsResponse.json();
- const donators = boostyDonatorsData.data || [];
- donators.forEach((donator: any) => {
- donations.push({
- id: donator.id ? String(donator.id) : `donator_${donator.user?.id}_${donator.createdAt}`,
- user: donator.user,
- amount: Number(donator.amount || 0),
- createdAt: donator.createdAt,
- isSubscription: false
- });
- });
- }
- } catch (netError) {
- console.warn('Внешнее API Boosty недоступно.');
- }
+    // Находим русскую страницу как эталон списков
+    const ruPage = supportPages.find((p: any) => p._id === '25618528-ef1e-494b-9500-04c1f89138cf') || supportPages[0];
+    
+    const existingEvents = Array.isArray(ruPage.boostyEvents) ? [...ruPage.boostyEvents] : [];
+    const existingPatrons = Array.isArray(ruPage.patronsList) ? [...ruPage.patronsList] : [];
+    
+    let hasChanges = false;
 
- // Тянем все страницы
- const query = `*[_type == "supportPage"]`;
- const supportPages = await writeClient.fetch(query);
+    // 3. Обрабатываем разовые донаты
+    rawDonations.forEach((don: any, index: number) => {
+      const amount = Number(don.amount || 0);
+      if (amount <= 0) return;
 
- if (!supportPages || supportPages.length === 0) {
- return NextResponse.json({ error: 'No support pages found in Sanity' }, { status: 404 });
- }
+      const donationId = String(don.id);
+      const username = don.user?.name || 'Анонимный Импульс';
+      
+      const isEventSaved = existingEvents.some((e: any) => String(e.eventId) === donationId);
+      
+      if (!isEventSaved) {
+        existingEvents.push({
+          _key: `event_${donationId}_${Date.now()}_${index}`,
+          _type: 'boostyEvent', // Защита от красного экрана Studio!
+          eventId: donationId,
+          username: username,
+          amount: amount,
+          createdAt: don.createdAt ? new Date(don.createdAt * 1000).toISOString() : new Date().toISOString(),
+        });
+        hasChanges = true;
+      }
+    });
 
- // НАДЁЖНЫЙ ФИКС: Ищем базовую страницу (русскую), чтобы брать эталонные списки.
- // Если ru-страница не найдена по какому-то сбою, берем просто самый первый элемент.
- const basePage = supportPages.find((p: any) => p.__i18n_lang === 'ru') || supportPages[0];
- const existingEvents = Array.isArray(basePage.boostyEvents) ? [...basePage.boostyEvents] : [];
- const existingPatrons = Array.isArray(basePage.patronsList) ? [...basePage.patronsList] : [];
- 
- let hasChanges = false;
+    // 4. Обрабатываем постоянных подписчиков
+    rawSubscribers.forEach((sub: any, index: number) => {
+      const username = sub.user?.name;
+      if (!username || username === 'Анонимный Импульс') return;
 
- donations.forEach((don: DonationItem, index: number) => {
- if (!don.amount || don.amount <= 0) return;
+      // Вычисляем цену подписки
+      const price = Number(sub.price || (sub.level && sub.level.price) || 0);
+      if (price <= 0) return;
 
- const username = don.user?.name || 'Анонимный Импульс';
- const amount = Number(don.amount);
- const donationId = don.id ? String(don.id) : `gen_id_${username}_${amount}_${index}`;
- 
- let createdAt = new Date().toISOString();
- if (don.createdAt) {
- createdAt = typeof don.createdAt === 'number' 
- ? new Date(don.createdAt * 1000).toISOString() 
- : new Date(don.createdAt).toISOString();
- }
- 
- const isEventSaved = existingEvents.some((e: any) => String(e.eventId) === donationId);
- 
- if (!isEventSaved) {
- existingEvents.push({
- _key: `event_${donationId}_${Date.now()}_${index}`,
- eventId: donationId,
- username: username,
- amount: amount,
- createdAt: createdAt,
- });
+      // Маппинг уровней подписки в рублях
+      let calculatedTierId = 'tier1';
+      if (price >= 1200) {
+        calculatedTierId = 'tier4';
+      } else if (price >= 600) {
+        calculatedTierId = 'tier3';
+      } else if (price >= 300) {
+        calculatedTierId = 'tier2';
+      }
 
- const isPatronSaved = existingPatrons.some(
- (p: any) => p.username && p.username.toLowerCase() === username.toLowerCase()
- );
+      const isPatronSaved = existingPatrons.some(
+        (p: any) => p.username && p.username.toLowerCase() === username.toLowerCase()
+      );
 
- let finalTierId = 'kamchatka'; 
- if (don.isSubscription) {
- const subAmount = Number(don.amount);
- if (subAmount >= 1000) {
- finalTierId = 'tier4'; 
- } else if (subAmount >= 500) {
- finalTierId = 'tier3'; 
- } else if (subAmount >= 300) {
- finalTierId = 'tier2'; 
- } else {
- finalTierId = 'tier1'; 
- }
- }
+      if (!isPatronSaved) {
+        existingPatrons.push({
+          _key: `patron_${sub.id || index}_${Date.now()}_${index}`,
+          _type: 'patron', // Защита от красного экрана Studio!
+          username: username,
+          tierId: calculatedTierId,
+          isActive: true,
+        });
+        hasChanges = true;
+      } else {
+        // Если подписчик уже есть, но поменял тир — обновляем его уровень
+        const patronIndex = existingPatrons.findIndex((p: any) => p.username && p.username.toLowerCase() === username.toLowerCase());
+        if (patronIndex !== -1 && existingPatrons[patronIndex].tierId !== calculatedTierId) {
+          existingPatrons[patronIndex].tierId = calculatedTierId;
+          hasChanges = true;
+        }
+      }
+    });
 
- if (!isPatronSaved && username !== 'Анонимный Импульс') {
- existingPatrons.push({
- _key: `patron_${donationId}_${Date.now()}_${index}`,
- username: username,
- tierId: finalTierId, 
- isActive: true,
- });
- }
- 
- hasChanges = true;
- }
- });
+    // 5. Записываем идентичные списки во ВСЕ найденные языковые документы
+    if (hasChanges) {
+      const updatePromises = supportPages.map((page: any) => {
+        return writeClient
+          .patch(page._id)
+          .set({ 
+            boostyEvents: existingEvents, 
+            patronsList: existingPatrons 
+          })
+          .commit();
+      });
 
- // Записываем абсолютно во все языковые документы идентичные списки
- if (hasChanges) {
- const updatePromises = supportPages.map((page: any) => {
- return writeClient
- .patch(page._id)
- .set({ 
- boostyEvents: existingEvents, 
- patronsList: existingPatrons 
- })
- .commit();
- });
+      await Promise.all(updatePromises);
+      revalidatePath('/support'); 
+    }
 
- await Promise.all(updatePromises);
- revalidatePath('/support'); 
- }
+    return NextResponse.json({ 
+      success: true, 
+      donationsFound: rawDonations.length,
+      subscribersFound: rawSubscribers.length,
+      hasUpdates: hasChanges,
+      message: hasChanges ? 'Синхронизация успешна на всех языках!' : 'База данных уже актуальна.'
+    });
 
- return NextResponse.json({ 
- success: true, 
- syncedCount: donations.length, 
- hasUpdates: hasChanges,
- message: hasChanges ? 'Синхронизация успешна на всех языках!' : 'База данных уже содержит эти записи.'
- });
-
- } catch (error: any) {
- console.error('Критическая ошибка бэкенда:', error);
- return NextResponse.json({ error: error.message }, { status: 500 });
- }
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
 }
 
 export async function GET(request: Request) {
- try {
- return await POST(request);
- } catch (error: any) {
- return NextResponse.json({ error: error.message }, { status: 500 });
- }
+  return POST(request);
 }

@@ -94,12 +94,6 @@ if (data && data.length > 0) {
   const [isMounted, setIsMounted] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false); // Состояние мобильного меню
 
-  const mockBoostyEvents = useMemo(() => [
-    { id: '1', type: 'subscription' as const, tierEnergy: 2, timestamp: Date.now() - 10 * 24 * 60 * 60 * 1000 },
-    { id: '2', type: 'one-time' as const, amountRub: 15000, timestamp: Date.now() - 5 * 24 * 60 * 60 * 1000 },
-    { id: '3', type: 'subscription' as const, tierEnergy: 10, timestamp: Date.now() - 2 * 24 * 60 * 60 * 1000 },
-    { id: '4', type: 'one-time' as const, amountRub: 4500, timestamp: Date.now() },
-  ], []);
 
 const { timelineSegments, totalCurrentEnergy } = useMemo(() => {
   const segments: Array<{ type: 'golden' | 'blue'; energyValue: number }> = [];
