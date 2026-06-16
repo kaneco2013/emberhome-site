@@ -110,24 +110,22 @@ const { timelineSegments, totalCurrentEnergy } = useMemo(() => {
     if (patron.tierId === 'kamchatka') { segments.push({ type: 'blue', energyValue: 0.1 }); total += 0.1; }
   });
 
-  // 2. Дополнительно обрабатываем логи прямых событий, если они нужны для импульсов
-  const currentEvents = sanityData?.boostyEvents || [];
-  currentEvents.forEach((event: any) => {
-    // Чтобы не дублировать Камчатку, если она уже посчитана в patronsList
-    const isAlreadyCounted = activePatrons.some((p: any) => p.username === event.username);
-    if (!isAlreadyCounted && event.amount) {
- const timestamp = new Date(event.createdAt).getTime();
- const daysPassed = (Date.now() - timestamp) / (1000 * 60 * 60 * 24);
- if (daysPassed < 30) {
- const currentEnergy = (Number(event.amount) / 150) * (1 - daysPassed / 30); // 150 рублей = 1 ЕД энергии
- if (currentEnergy > 0) {
-
-          segments.push({ type: 'blue', energyValue: currentEnergy });
-          total += currentEnergy;
-        }
-      }
-    }
-  });
+ // 2. Дополнительно обрабатываем логи прямых событий, если они нужны для импульсов
+ const currentEvents = sanityData?.boostyEvents || [];
+ currentEvents.forEach((event: any) => {
+   // Убираем блокировку по имени, чтобы суммировались абсолютно все донаты из логов
+   if (event.amount) {
+     const timestamp = new Date(event.createdAt).getTime();
+     const daysPassed = (Date.now() - timestamp) / (1000 * 60 * 60 * 24);
+     if (daysPassed < 30) {
+       const currentEnergy = (Number(event.amount) / 150) * (1 - daysPassed / 30); // 150 рублей = 1 ЕД энергии
+       if (currentEnergy > 0) {
+         segments.push({ type: 'blue', energyValue: currentEnergy });
+         total += currentEnergy;
+       }
+     }
+   }
+ });
 
   return { timelineSegments: segments, totalCurrentEnergy: total };
 }, [sanityData?.patronsList, sanityData?.boostyEvents]);
