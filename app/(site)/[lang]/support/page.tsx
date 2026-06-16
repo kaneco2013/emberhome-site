@@ -159,7 +159,7 @@ const { timelineSegments, totalCurrentEnergy } = useMemo(() => {
     };
     const id = setTimeout(() => requestAnimationFrame(animate), 100);
     return () => clearTimeout(id);
-  }, []);
+  }, [finalProgressPercentage]);
 
   const activeNodesCount = NODES_CONFIG.filter(n => animatedProgress >= n.threshold).length;
   const coreStateIndex = animatedProgress >= 100 ? 7 : activeNodesCount + 1;
