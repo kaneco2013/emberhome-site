@@ -74,7 +74,11 @@ export default function SupportPage({ params }: SupportPageProps) {
           patronsList
         }`;
         
-const data = await client.fetch(query, { lang: currentLang });
+const data = await client.fetch(
+  query, 
+  { lang: currentLang }, 
+  { cache: 'no-store', next: { revalidate: 0 } }
+);
 if (data && data.length > 0) {
   setSanityData(data[0]);
 } else {
