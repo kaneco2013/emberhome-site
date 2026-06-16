@@ -26,44 +26,46 @@ export async function POST(request: Request) {
     let donations: any[] = [];
 
     try {
-      // Заголовки-маскировка, чтобы Boosty не блокировал американские сервера Vercel
+      // Наша маскировка для защиты от блокировок американских серверов Vercel
       const boostyHeaders = {
         'Authorization': `Bearer ${process.env.BOOSTY_ACCESS_TOKEN}`,
         'Accept': 'application/json',
         'Accept-Language': 'ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7',
-        'Origin': 'https://boosty.to',
-        'Referer': 'https://boosty.to/',
+        'Origin': 'https: //boosty.to',
+        'Referer': 'https: //boosty.to/',
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
       };
 
+      // Делаем параллельные запросы. Адрес donators исправили на лорный боевой donations!
       const [targetResponse, subscribersResponse, donatorsResponse] = await Promise.all([
-        fetch(`https://api.boosty.to/v1/blog/emberhome/target`, {
+        fetch(`https: //api.boosty.to/v1/blog/emberhome/target`, {
           cache: 'no-store',
           headers: boostyHeaders,
           next: { revalidate: 0 },
         }),
-        fetch(`https://api.boosty.to/v1/blog/emberhome/subscribers?limit=100`, {
+        fetch(`https: //api.boosty.to/v1/blog/emberhome/subscribers?limit=100`, {
           cache: 'no-store',
           headers: boostyHeaders,
           next: { revalidate: 0 },
         }),
-        fetch(`https://api.boosty.to/v1/blog/emberhome/donators?limit=100`, {
+        fetch(`https: //api.boosty.to/v1/blog/emberhome/donations?limit=100`, {
           cache: 'no-store',
           headers: boostyHeaders,
           next: { revalidate: 0 },
         })
       ]);
 
-      // 1. Донаты на цели
+      // 1. Разбираем донаты на цели
       if (targetResponse.ok) {
         const boostyTargetData = await targetResponse.json();
         const targets = boostyTargetData.data || [];
         targets.forEach((target: any) => {
           if (target.donators && Array.isArray(target.donators)) {
             target.donators.forEach((don: any) => {
+              const username = don.user?.name || don.user?.displayName || 'Анонимный Импульс';
               donations.push({
-                id: don.id || `target_${don.user?.id}_${don.createdAt}`,
-                user: don.user,
+                id: don.id ? String(don.id) : `target_${don.user?.id || 'id'}_${don.createdAt}`,
+                user: { name: username },
                 amount: Number(don.amount || 0),
                 createdAt: don.createdAt,
                 isSubscription: false
@@ -73,41 +75,55 @@ export async function POST(request: Request) {
         });
       }
 
-      // 2. Регулярные подписчики
+      // 2. Разбираем регулярных платных подписчиков
       if (subscribersResponse.ok) {
         const boostySubData = await subscribersResponse.json();
         const subscribers = boostySubData.data || [];
         subscribers.forEach((sub: any) => {
-          const price = sub.price || (sub.level && sub.level.price) || 0;
-          donations.push({
-            id: sub.id || `sub_${sub.user?.id}_${sub.createdAt}`,
-            user: sub.user,
-            amount: Number(price),
-            createdAt: sub.createdAt,
-            isSubscription: true
-          });
+          const realUser = sub.user || sub.subscriber || {};
+          const username = realUser.name || realUser.displayName || 'Анонимный Патрон';
+          
+          // Стоимость уровня подписки в API Boosty всегда лежит в sub.level.price
+          const price = sub.level?.price || sub.price || 0;
+          
+          // Игнорируем бесплатных подписчиков, они не дают энергию ядра
+          if (Number(price) > 0) {
+            donations.push({
+              id: sub.id ? String(sub.id) : `sub_${realUser.id || 'id'}_${sub.createdAt}`,
+              user: { name: username },
+              amount: Number(price),
+              createdAt: sub.createdAt,
+              isSubscription: true
+            });
+          }
         });
       }
 
-      // 3. Разовые донаты без целей
+      // 3. Разбираем разовые донаты в профиль (Исправлено под структуру donations)
       if (donatorsResponse.ok) {
-        const boostyDonatorsData = await donatorsResponse.json();
-        const donators = boostyDonatorsData.data || [];
+        const boostyDonationsData = await donatorsResponse.json();
+        const donators = boostyDonationsData.data || [];
         donators.forEach((donator: any) => {
-          donations.push({
-            id: donator.id || `donator_${donator.user?.id}_${donator.createdAt}`,
-            user: donator.user,
-            amount: Number(donator.amount || 0),
-            createdAt: donator.createdAt,
-            isSubscription: false
-          });
+          const realUser = donator.user || donator.sender || {};
+          const username = realUser.name || realUser.displayName || 'Анонимный Импульс';
+          const amount = donator.amount || donator.price || 0;
+
+          if (Number(amount) > 0) {
+            donations.push({
+              id: donator.id ? String(donator.id) : `donator_${realUser.id || 'id'}_${donator.createdAt}`,
+              user: { name: username },
+              amount: Number(amount),
+              createdAt: donator.createdAt,
+              isSubscription: false
+            });
+          }
         });
       }
     } catch (netError) {
       console.warn('Внешнее API Boosty недоступно.');
     }
 
-    // Находим абсолютно все страницы поддержки для синхронизации локалей
+    // Достаем все языковые документы из Sanity
     const query = `*[_type == "supportPage"]`;
     const supportPages = await writeClient.fetch(query);
 
@@ -117,9 +133,8 @@ export async function POST(request: Request) {
 
     let totalUpdatedPages = 0;
 
-    // Обрабатываем каждую языковую страницу изолированно, чтобы не ломать структуру Sanity
+    // Синхронизируем каждый язык изолированно
     const updatePromises = supportPages.map(async (page: any) => {
-      // Защита от undefined: если массивов в базе нет, создаём чистые пустые массивы
       const existingEvents = Array.isArray(page.boostyEvents) ? [...page.boostyEvents] : [];
       const existingPatrons = Array.isArray(page.patronsList) ? [...page.patronsList] : [];
       let pageHasChanges = false;
@@ -129,7 +144,7 @@ export async function POST(request: Request) {
 
         const username = don.user?.name || 'Анонимный Импульс';
         const amount = Number(don.amount);
-        const donationId = don.id ? String(don.id) : `gen_id_${username}_${amount}_${index}`;
+        const donationId = String(don.id);
 
         let createdAt = new Date().toISOString();
         if (don.createdAt) {
@@ -138,8 +153,8 @@ export async function POST(request: Request) {
             : new Date(don.createdAt).toISOString();
         }
 
-        // Ищем, сохранён ли уже этот донат именно на ТЕКУЩЕЙ языковой странице
-        const isEventSaved = existingEvents.some((e: any) => e.eventId === donationId);
+        // Строгая сверка по реальному eventId из Boosty
+        const isEventSaved = existingEvents.some((e: any) => String(e.eventId) === donationId);
 
         if (!isEventSaved) {
           existingEvents.push({
@@ -157,7 +172,6 @@ export async function POST(request: Request) {
           let finalTierId = 'kamchatka'; 
           if (don.isSubscription) {
             const subAmount = Number(don.amount);
-
             if (subAmount >= 1000) {
               finalTierId = 'tier4'; 
             } else if (subAmount >= 500) {
@@ -182,7 +196,6 @@ export async function POST(request: Request) {
         }
       });
 
-      // Сохраняем изменения в базу только если нашли новые донаты для этой страницы
       if (pageHasChanges) {
         totalUpdatedPages++;
         return writeClient
@@ -196,14 +209,13 @@ export async function POST(request: Request) {
       return Promise.resolve(null);
     });
 
-    // Ожидаем завершения всех запросов к Sanity
     await Promise.all(updatePromises);
 
     if (totalUpdatedPages > 0) {
       revalidatePath('/support'); 
     }
 
-    // Собираем диагностику по первой (русской) странице для наглядности в терминале
+    // Наш прозрачный дебаг-лог для вывода всей подноготной в терминал
     const debugPage = supportPages[0] || {};
     const sanityEventsDebug = Array.isArray(debugPage.boostyEvents) 
       ? debugPage.boostyEvents.map((e: any) => `${e.username}(ID:${e.eventId}, ${e.amount}р)`)
@@ -222,20 +234,16 @@ export async function POST(request: Request) {
     return NextResponse.json({
       success: true,
       updatedPagesCount: totalUpdatedPages,
-      // 1. Что реально прилетело из Boosty:
       boostyData: {
         totalFound: donations.length,
         list: boostyDonationsDebug
       },
-      // 2. Что прямо сейчас лежит в Sanity:
       sanityDataSnapshot: {
         eventsInDb: sanityEventsDebug,
         patronsInDb: sanityPatronsDebug
       },
-      // 3. Логика сравнения:
-      matchingLogic: "Сверка идет по eventId для логов и по username (регистронезависимо) для патронов."
+      matchingLogic: "Сверка идет по реальному eventId из Boosty для логов событий."
     }, { status: 200 });
-
 
   } catch (error: any) {
     console.error('Критическая ошибка бэкенда:', error);
